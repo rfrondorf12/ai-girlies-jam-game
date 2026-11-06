@@ -1,6 +1,6 @@
 // M3 feel: 8-panel comic runner with spawning monsters, stomp, slash, score, instant restart, and procedural Web Audio SFX.
 import {
-  PLAYFIELD_W, PLAYFIELD_H, PANEL_MARGIN, GROUND_Y, GROUND_THICKNESS, OUTLINE_WIDTH, MAX_DT,
+  PLAYFIELD_W, PLAYFIELD_H, PANEL_MARGIN, GROUND_Y, GROUND_THICKNESS, OUTLINE_WIDTH, TEXT_OUTLINE_WIDTH, MAX_DT,
   GRAVITY, MAX_FALL_SPEED, JUMP_VELOCITY, MAX_JUMPS, DOUBLE_JUMP_VELOCITY,
   MOVE_SPEED, PLAYER_W, PLAYER_H, PLAYER_START_X,
   SHAPE_ROUND, EYE_OFFSET_X, EYE_OFFSET_Y, EYE_RADIUS_X, EYE_RADIUS_Y,
@@ -540,7 +540,7 @@ function drawScore() {
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.font = `${SCORE_FONT_SIZE}px ${FONT_STACK}`;
-  ctx.lineWidth = OUTLINE_WIDTH;
+  ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   ctx.strokeStyle = COLOR_INK;
   const text = `SCORE: ${score}`;
   const x = PANEL_MARGIN + 12;
@@ -556,7 +556,7 @@ function drawPanelCounter() {
   ctx.textAlign = 'right';
   ctx.textBaseline = 'top';
   ctx.font = `${PANEL_COUNTER_FONT_SIZE}px ${FONT_STACK}`;
-  ctx.lineWidth = OUTLINE_WIDTH;
+  ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   ctx.strokeStyle = COLOR_INK;
   const text = `PANEL ${panel}/8`;
   const x = PLAYFIELD_W - PANEL_MARGIN - 12;
@@ -575,7 +575,7 @@ function drawControlsHint() {
   ctx.textAlign = 'left';
   ctx.textBaseline = 'bottom';
   ctx.font = `${CONTROLS_HINT_SIZE}px ${FONT_STACK}`;
-  ctx.lineWidth = OUTLINE_WIDTH;
+  ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   ctx.lineJoin = 'round';
   ctx.strokeStyle = COLOR_INK;
   const x = PANEL_MARGIN + CONTROLS_HINT_MARGIN;
@@ -596,7 +596,7 @@ function drawPanelClear() {
   ctx.lineJoin = 'round';
   ctx.strokeStyle = COLOR_INK;
   ctx.font = `${PANEL_CLEAR_FONT_SIZE}px ${FONT_STACK}`;
-  ctx.lineWidth = OUTLINE_WIDTH * 2.5;
+  ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   const text = `PANEL ${panel} CLEARED!`;
   ctx.strokeText(text, cx, cy);
   ctx.fillStyle = 'transparent';
@@ -615,13 +615,13 @@ function drawGameOver() {
   ctx.strokeStyle = COLOR_INK;
 
   ctx.font = `${GAME_OVER_FONT_SIZE}px ${FONT_STACK}`;
-  ctx.lineWidth = OUTLINE_WIDTH * 3;
+  ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   ctx.strokeText(GAME_OVER_TEXT, cx, GAME_OVER_BANNER_Y);
   ctx.fillStyle = 'transparent';
   ctx.fillText(GAME_OVER_TEXT, cx, GAME_OVER_BANNER_Y);
 
   ctx.font = `${GAME_OVER_HINT_SIZE}px ${FONT_STACK}`;
-  ctx.lineWidth = OUTLINE_WIDTH * 1.5;
+  ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   const hintY = GAME_OVER_BANNER_Y + GAME_OVER_HINT_GAP;
   ctx.strokeText(RESTART_HINT, cx, hintY);
   ctx.fillStyle = 'transparent';
@@ -639,13 +639,13 @@ function drawVictory() {
   ctx.strokeStyle = COLOR_INK;
 
   ctx.font = `${VICTORY_FONT_SIZE}px ${FONT_STACK}`;
-  ctx.lineWidth = OUTLINE_WIDTH * 3;
+  ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   ctx.strokeText(VICTORY_TEXT, cx, GAME_OVER_BANNER_Y);
   ctx.fillStyle = 'transparent';
   ctx.fillText(VICTORY_TEXT, cx, GAME_OVER_BANNER_Y);
 
   ctx.font = `${GAME_OVER_HINT_SIZE}px ${FONT_STACK}`;
-  ctx.lineWidth = OUTLINE_WIDTH * 1.5;
+  ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   const scoreY = GAME_OVER_BANNER_Y + GAME_OVER_HINT_GAP;
   const scoreText = `FINAL SCORE: ${score}`;
   ctx.strokeText(scoreText, cx, scoreY);

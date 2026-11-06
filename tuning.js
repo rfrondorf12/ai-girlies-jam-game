@@ -6,7 +6,8 @@ export const PLAYFIELD_H = 540;      // logical panel height in game units
 export const PANEL_MARGIN = 22;      // inset of the comic panel border from the playfield edge
 export const GROUND_Y = 460;         // y of the ground line, measured from the top of the playfield
 export const GROUND_THICKNESS = 6;   // thickness of the ink ground line
-export const OUTLINE_WIDTH = 4;      // chunky ink outline weight for every shape
+export const OUTLINE_WIDTH = 4;      // chunky ink outline weight for shapes and player
+export const TEXT_OUTLINE_WIDTH = 1.5; // much thinner ink outline so comic lettering stays readable
 export const MAX_DT = 1 / 30;        // longest step we simulate, so a stalled tab can't teleport the player
 
 // --- Player ---
