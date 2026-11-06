@@ -1,11 +1,15 @@
-// M1 gray box: one comic panel, a wedge hero that runs, jumps and slashes a plain test target.
+// M1 gray box: one comic panel, a wedge hero that runs, jumps, slashes and stomps a plain test
+// target. Only the target's top edge is safe: side contact ends the run.
 import {
   PLAYFIELD_W, PLAYFIELD_H, PANEL_MARGIN, GROUND_Y, GROUND_THICKNESS, OUTLINE_WIDTH, MAX_DT,
   GRAVITY, MAX_FALL_SPEED, JUMP_VELOCITY, MOVE_SPEED, PLAYER_W, PLAYER_H, PLAYER_START_X,
   SHAPE_ROUND, EYE_OFFSET_X, EYE_OFFSET_Y, EYE_RADIUS_X, EYE_RADIUS_Y,
   SLASH_DURATION, SLASH_REACH, SLASH_THICKNESS, SLASH_ARC_SPREAD, SLASH_SAMPLES, SHOULDER_HEIGHT,
   TARGET_W, TARGET_H, TARGET_X, HIT_FLASH, STOMP_SQUASH,
+  GAME_OVER_TEXT, RESTART_HINT, GAME_OVER_BANNER_Y, GAME_OVER_FONT_SIZE, GAME_OVER_HINT_SIZE,
+  GAME_OVER_HINT_GAP, FONT_STACK,
   COLOR_PAPER, COLOR_INK, COLOR_PLAYER, COLOR_EYE, COLOR_TARGET, COLOR_TARGET_HIT, COLOR_GROUND,
+  COLOR_DEATH,
 } from './tuning.js';
 
 const canvas = document.getElementById('game');
@@ -19,6 +23,10 @@ const ctx = canvas.getContext('2d');
 const player = { x: 0, y: 0, vx: 0, vy: 0, facing: 1, grounded: false, slashTimer: 0 };
 const target = { hitTimer: 0, stompTimer: 0 };
 
+let gameOver = false;   // run has ended: physics freezes, the panel keeps drawing
+let jumpQueued = false; // a Space press waiting for update() to spend on a jump
+let slashQueued = false; // a '/' press waiting for update() to spend on a swing
+
 function reset() {
   player.x = PLAYER_START_X;
   player.y = GROUND_Y;
@@ -29,6 +37,9 @@ function reset() {
   player.slashTimer = 0;
   target.hitTimer = 0;
   target.stompTimer = 0;
+  gameOver = false;
+  jumpQueued = false;
+  slashQueued = false;
 }
 reset();
 
@@ -40,15 +51,17 @@ const targetTop = () => GROUND_Y - TARGET_H;
 // ---------------------------------------------------------------------------
 
 const held = new Set();
-let jumpQueued = false;
-let slashQueued = false;
 const BLOCKED = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'Slash']);
 
 addEventListener('keydown', (e) => {
   if (BLOCKED.has(e.code)) e.preventDefault();
   held.add(e.code);
   if (e.repeat) return;
-  if (e.code === 'Space') jumpQueued = true;
+  // Space jumps while running, and retries once the run is over.
+  if (e.code === 'Space') {
+    if (gameOver) reset();
+    else jumpQueued = true;
+  }
   if (e.code === 'Slash' || e.key === '/') slashQueued = true;
   if (e.code === 'KeyR') reset();
 });
@@ -81,6 +94,9 @@ function slashHitsTarget() {
 }
 
 function update(dt) {
+  // The run has ended: hold physics still, the draw step keeps showing the panel.
+  if (gameOver) return;
+
   // --- run ---
   let dir = 0;
   if (held.has('ArrowLeft') || held.has('KeyA')) dir -= 1;
@@ -105,7 +121,7 @@ function update(dt) {
   player.y += player.vy * dt;
   player.grounded = false;
 
-  // Land on the target's top edge when falling onto it: that is the stomp.
+  // Land on the target's top edge when falling onto it: that is the stomp, and it is safe.
   const overTarget = player.x + halfW > targetLeft() && player.x - halfW < targetLeft() + TARGET_W;
   if (overTarget && player.vy > 0 && prevBottom <= targetTop() && player.y >= targetTop()) {
     player.y = targetTop();
@@ -118,6 +134,17 @@ function update(dt) {
     player.y = GROUND_Y;
     player.vy = 0;
     player.grounded = true;
+  }
+
+  // Side contact: inside the target's box with the feet below its top edge means the hero
+  // ran into it rather than onto it. Shove the hero back out to the edge they came from so
+  // they cannot pass through, and end the run.
+  if (overTarget && player.y > targetTop()) {
+    player.x = player.x < TARGET_X ? targetLeft() - halfW : targetLeft() + TARGET_W + halfW;
+    player.vx = 0;
+    player.vy = 0;
+    gameOver = true;
+    return;
   }
 
   // --- slash ---
@@ -209,7 +236,7 @@ function drawPlayer() {
 
   // The Missing Piece: a rounded wedge whose point is the direction of travel.
   roundedPath([{ x: -w / 2, y: -h }, { x: w / 2, y: -h / 2 }, { x: -w / 2, y: 0 }], Math.min(w, h) * SHAPE_ROUND);
-  ctx.fillStyle = COLOR_PLAYER;
+  ctx.fillStyle = gameOver ? COLOR_DEATH : COLOR_PLAYER;
   ctx.fill();
   ctx.stroke();
 
@@ -237,6 +264,31 @@ function drawSlash() {
   ctx.restore();
 }
 
+// The end-of-run marker: inked "GAME OVER" plus the retry prompt, centred in the panel.
+function drawGameOver() {
+  if (!gameOver) return;
+  const cx = PLAYFIELD_W / 2;
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = COLOR_INK;
+
+  ctx.font = `bold ${GAME_OVER_FONT_SIZE}px ${FONT_STACK}`;
+  ctx.lineWidth = OUTLINE_WIDTH * 3;
+  ctx.strokeText(GAME_OVER_TEXT, cx, GAME_OVER_BANNER_Y);
+  ctx.fillStyle = COLOR_DEATH;
+  ctx.fillText(GAME_OVER_TEXT, cx, GAME_OVER_BANNER_Y);
+
+  ctx.font = `bold ${GAME_OVER_HINT_SIZE}px ${FONT_STACK}`;
+  ctx.lineWidth = OUTLINE_WIDTH * 1.5;
+  const hintY = GAME_OVER_BANNER_Y + GAME_OVER_HINT_GAP;
+  ctx.strokeText(RESTART_HINT, cx, hintY);
+  ctx.fillStyle = COLOR_INK;
+  ctx.fillText(RESTART_HINT, cx, hintY);
+  ctx.restore();
+}
+
 function draw() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = COLOR_PAPER;
@@ -247,6 +299,7 @@ function draw() {
   drawTarget();
   drawPlayer();
   drawSlash();
+  drawGameOver();
 }
 
 // ---------------------------------------------------------------------------

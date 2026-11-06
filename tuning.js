@@ -38,7 +38,17 @@ export const TARGET_X = 640;     // target box centre x, sitting on the ground l
 export const HIT_FLASH = 0.22;   // seconds a slash hit or stomp keeps the target lit up
 export const STOMP_SQUASH = 0.2; // how flat the target squashes on a stomp, as a fraction of its height
 
+// --- Game over ---
+export const GAME_OVER_TEXT = 'GAME OVER!';        // banner shown when a run ends
+export const RESTART_HINT = 'Press R or Space to retry'; // prompt printed under the banner
+export const GAME_OVER_BANNER_Y = 230;             // banner centre y in playfield units
+export const GAME_OVER_FONT_SIZE = 72;             // banner text size in playfield units
+export const GAME_OVER_HINT_SIZE = 24;             // restart hint text size in playfield units
+export const GAME_OVER_HINT_GAP = 58;              // vertical gap between banner centre and hint centre
+export const FONT_STACK = 'system-ui, sans-serif'; // canvas font stack for panel text
+
 // --- Colours ---
+export const COLOR_DEATH = '#C4342A';       // hero's body and banner ink once the run has ended
 export const COLOR_PAPER = '#F4EBD9';       // warm newsprint page
 export const COLOR_INK = '#1E1B1E';         // comic ink outline
 export const COLOR_PLAYER = '#E94B35';      // the hero's red body
