@@ -60,11 +60,9 @@ Format for each playtest (after M2 and after M3):
 
 *Be accurate: neither more nor less than what happened.*
 
-**Draft (to be corrected by the makers before it is final)**
-
 Lucid Ink was made by VR, KR, and RF in the Anthropic Game Jam, using Claude Code. The team decided the card (Card 2: Jumper/Runner, extended with stomp and slash), the game design, the characters, fonts, colors, and obstacle style. They rejected and reworked several of Claude's suggestions, including the first square obstacles, which became flying scissors and stars. Claude Code (the build terminal, jam-companion) and its agents wrote all of the game code and drew all of the art in code. The makers directed the gameplay and design.
 
-- **Planning:** Imra (Gemini 3.8 Flash) [to confirm: tool name, and whether Imra wrote the context files or the build terminal did] helped turn brainstorming notes into the context files and build plan (12:30 and 12:43 in the log).
+- **Planning:** Imra, the makers' personal vault AI agent (Gemini 3.8 Flash, a separate project), used Socratic questioning to help develop the ideas and helped write the context files (12:30 and 12:43 in the log). The team came up with all of the ideas.
 - **Visual references:** ChatGPT (6.1 sol light and 5.6 sol) made 20 comic mockups, used only as visual references. None are in the shipped game.
 - **Game assets:** No AI-generated images, sound, or 3D models are in the game (`ai_assets` in `meta.json` is empty). The one asset file is the Ka Blam font, which is not AI-generated; its source and license are in `meta.json`.
 - **Plan block:** The build terminal wrote the plan answers into `context/` and drafted `context/BUILD-PLAN.md`. The makers edited and approved it (git log shows when, first in the 12:55 commit).
