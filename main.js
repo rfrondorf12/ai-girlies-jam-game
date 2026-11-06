@@ -1,15 +1,18 @@
-// M1 gray box: one comic panel, a wedge hero that runs, jumps, slashes and stomps a plain test
-// target. Only the target's top edge is safe: side contact ends the run.
+// M2 loop: 8-panel comic runner with spawning monsters, stomp, slash, score, and instant restart.
 import {
   PLAYFIELD_W, PLAYFIELD_H, PANEL_MARGIN, GROUND_Y, GROUND_THICKNESS, OUTLINE_WIDTH, MAX_DT,
   GRAVITY, MAX_FALL_SPEED, JUMP_VELOCITY, MOVE_SPEED, PLAYER_W, PLAYER_H, PLAYER_START_X,
   SHAPE_ROUND, EYE_OFFSET_X, EYE_OFFSET_Y, EYE_RADIUS_X, EYE_RADIUS_Y,
   SLASH_DURATION, SLASH_REACH, SLASH_THICKNESS, SLASH_ARC_SPREAD, SLASH_SAMPLES, SHOULDER_HEIGHT,
-  TARGET_W, TARGET_H, TARGET_X, HIT_FLASH, STOMP_SQUASH,
+  MONSTER_W, MONSTER_H, MONSTER_SPEED, BASE_MONSTERS_PER_PANEL, SPAWN_INTERVAL, SPAWN_PANEL_MULTIPLIER,
+  HIT_FLASH, STOMP_SQUASH, STOMP_BOUNCE_VELOCITY,
+  PANEL_CLEAR_DELAY, PANEL_CLEAR_SCORE, MONSTER_KILL_SCORE,
+  SCORE_FONT_SIZE, PANEL_COUNTER_FONT_SIZE, PANEL_CLEAR_FONT_SIZE,
+  VICTORY_FONT_SIZE, VICTORY_TEXT, VICTORY_HINT,
   GAME_OVER_TEXT, RESTART_HINT, GAME_OVER_BANNER_Y, GAME_OVER_FONT_SIZE, GAME_OVER_HINT_SIZE,
   GAME_OVER_HINT_GAP, FONT_STACK,
-  COLOR_PAPER, COLOR_INK, COLOR_PLAYER, COLOR_EYE, COLOR_TARGET, COLOR_TARGET_HIT, COLOR_GROUND,
-  COLOR_DEATH,
+  COLOR_PAPER, COLOR_INK, COLOR_PLAYER, COLOR_EYE, COLOR_MONSTER, COLOR_GROUND,
+  COLOR_DEATH, PANEL_FLASH_COLOR,
 } from './tuning.js';
 
 const canvas = document.getElementById('game');
@@ -21,11 +24,32 @@ const ctx = canvas.getContext('2d');
 
 // player.y is the bottom of the hero (its feet), not its top.
 const player = { x: 0, y: 0, vx: 0, vy: 0, facing: 1, grounded: false, slashTimer: 0 };
-const target = { hitTimer: 0, stompTimer: 0 };
+const monsters = [];
 
-let gameOver = false;   // run has ended: physics freezes, the panel keeps drawing
-let jumpQueued = false; // a Space press waiting for update() to spend on a jump
-let slashQueued = false; // a '/' press waiting for update() to spend on a swing
+let panel = 1;                // current comic panel, 1 through 8
+let spawnedThisPanel = 0;     // how many monsters have entered this panel
+let spawnTimer = 0;           // countdown to the next spawn
+let score = 0;                // run score
+let panelClearTimer = 0;      // >0 while "PANEL N CLEARED!" is shown
+let gameOver = false;         // run has ended: physics freezes, the panel keeps drawing
+let victory = false;          // all 8 panels cleared
+let jumpQueued = false;       // a Space press waiting for update() to spend on a jump
+let slashQueued = false;      // a '/' press waiting for update() to spend on a swing
+
+function monstersPerPanel(p) {
+  return BASE_MONSTERS_PER_PANEL + p;
+}
+
+function spawnMonster() {
+  monsters.push({
+    x: PLAYFIELD_W - PANEL_MARGIN - MONSTER_W / 2,
+    y: GROUND_Y,
+    w: MONSTER_W,
+    h: MONSTER_H,
+    dead: false,
+    hitTimer: 0,
+  });
+}
 
 function reset() {
   player.x = PLAYER_START_X;
@@ -35,16 +59,18 @@ function reset() {
   player.facing = 1;
   player.grounded = true;
   player.slashTimer = 0;
-  target.hitTimer = 0;
-  target.stompTimer = 0;
+  monsters.length = 0;
+  panel = 1;
+  spawnedThisPanel = 0;
+  spawnTimer = 0;
+  score = 0;
+  panelClearTimer = 0;
   gameOver = false;
+  victory = false;
   jumpQueued = false;
   slashQueued = false;
 }
 reset();
-
-const targetLeft = () => TARGET_X - TARGET_W / 2;
-const targetTop = () => GROUND_Y - TARGET_H;
 
 // ---------------------------------------------------------------------------
 // Input: held keys for movement, single presses for jump and slash
@@ -59,7 +85,7 @@ addEventListener('keydown', (e) => {
   if (e.repeat) return;
   // Space jumps while running, and retries once the run is over.
   if (e.code === 'Space') {
-    if (gameOver) reset();
+    if (gameOver || victory) reset();
     else jumpQueued = true;
   }
   if (e.code === 'Slash' || e.key === '/') slashQueued = true;
@@ -72,16 +98,24 @@ addEventListener('blur', () => held.clear());
 // Update
 // ---------------------------------------------------------------------------
 
-// The slash arc is sampled into points; if any sample lands inside the target box
-// expanded by half the arc's thickness, the swing connected.
-function slashHitsTarget() {
+function killMonster(m) {
+  if (m.dead) return;
+  m.dead = true;
+  m.hitTimer = HIT_FLASH;
+  score += MONSTER_KILL_SCORE;
+}
+
+// The slash arc is sampled into points; if any sample lands inside a live
+// monster's AABB expanded by half the arc's thickness, the swing connected.
+function slashHitsMonster(m) {
+  if (m.dead) return false;
   const shoulderX = player.x;
   const shoulderY = player.y - PLAYER_H * SHOULDER_HEIGHT;
   const pad = SLASH_THICKNESS / 2;
-  const left = targetLeft() - pad;
-  const right = targetLeft() + TARGET_W + pad;
-  const top = targetTop() - pad;
-  const bottom = GROUND_Y + pad;
+  const left = m.x - m.w / 2 - pad;
+  const right = m.x + m.w / 2 + pad;
+  const top = m.y - m.h - pad;
+  const bottom = m.y + pad;
   const half = SLASH_ARC_SPREAD / 2;
 
   for (let i = 0; i < SLASH_SAMPLES; i++) {
@@ -93,9 +127,42 @@ function slashHitsTarget() {
   return false;
 }
 
+function updateMonsters(dt) {
+  for (const m of monsters) {
+    if (!m.dead) {
+      m.x -= MONSTER_SPEED * dt;
+      // Wrap from the left edge back to the right edge so the player must kill it.
+      if (m.x < -m.w / 2) m.x = PLAYFIELD_W - PANEL_MARGIN - m.w / 2;
+    }
+    m.hitTimer = Math.max(0, m.hitTimer - dt);
+  }
+  // Dead monsters linger bright for HIT_FLASH seconds, then leave the array.
+  for (let i = monsters.length - 1; i >= 0; i--) {
+    if (monsters[i].dead && monsters[i].hitTimer <= 0) monsters.splice(i, 1);
+  }
+}
+
+function advancePanel() {
+  score += PANEL_CLEAR_SCORE;
+  if (panel >= 8) {
+    victory = true;
+    return;
+  }
+  panel++;
+  spawnedThisPanel = 0;
+  spawnTimer = 0;
+  monsters.length = 0;
+}
+
 function update(dt) {
-  // The run has ended: hold physics still, the draw step keeps showing the panel.
-  if (gameOver) return;
+  // The run has ended or a panel is being celebrated: hold physics still.
+  if (gameOver || victory) return;
+
+  if (panelClearTimer > 0) {
+    panelClearTimer = Math.max(0, panelClearTimer - dt);
+    if (panelClearTimer <= 0) advancePanel();
+    return;
+  }
 
   // --- run ---
   let dir = 0;
@@ -121,30 +188,59 @@ function update(dt) {
   player.y += player.vy * dt;
   player.grounded = false;
 
-  // Land on the target's top edge when falling onto it: that is the stomp, and it is safe.
-  const overTarget = player.x + halfW > targetLeft() && player.x - halfW < targetLeft() + TARGET_W;
-  if (overTarget && player.vy > 0 && prevBottom <= targetTop() && player.y >= targetTop()) {
-    player.y = targetTop();
-    player.vy = 0;
-    player.grounded = true;
-    target.stompTimer = HIT_FLASH;
+  // --- spawn ---
+  spawnTimer -= dt;
+  if (spawnTimer <= 0 && spawnedThisPanel < monstersPerPanel(panel)) {
+    spawnMonster();
+    spawnedThisPanel++;
+    spawnTimer = SPAWN_INTERVAL / (1 + (panel - 1) * SPAWN_PANEL_MULTIPLIER);
   }
 
+  updateMonsters(dt);
+
+  // --- stomp ---
+  // Falling onto a live monster's top edge kills it and bounces the player.
+  for (const m of monsters) {
+    if (m.dead) continue;
+    const mLeft = m.x - m.w / 2;
+    const mRight = m.x + m.w / 2;
+    const mTop = m.y - m.h;
+    const overlapX = player.x + halfW > mLeft && player.x - halfW < mRight;
+    if (overlapX && player.vy > 0 && prevBottom <= mTop && player.y >= mTop) {
+      player.y = mTop;
+      player.vy = STOMP_BOUNCE_VELOCITY;
+      player.grounded = true;
+      killMonster(m);
+      break;
+    }
+  }
+
+  // --- ground ---
   if (player.y >= GROUND_Y) {
     player.y = GROUND_Y;
     player.vy = 0;
     player.grounded = true;
   }
 
-  // Side contact: inside the target's box with the feet below its top edge means the hero
-  // ran into it rather than onto it. Shove the hero back out to the edge they came from so
-  // they cannot pass through, and end the run.
-  if (overTarget && player.y > targetTop()) {
-    player.x = player.x < TARGET_X ? targetLeft() - halfW : targetLeft() + TARGET_W + halfW;
-    player.vx = 0;
-    player.vy = 0;
-    gameOver = true;
-    return;
+  // --- side contact / overlap ---
+  // Any overlap with a live monster that wasn't a stomp ends the run.
+  for (const m of monsters) {
+    if (m.dead) continue;
+    const mLeft = m.x - m.w / 2;
+    const mRight = m.x + m.w / 2;
+    const mTop = m.y - m.h;
+    const mBottom = m.y;
+    const pLeft = player.x - halfW;
+    const pRight = player.x + halfW;
+    const pTop = player.y - PLAYER_H;
+    const pBottom = player.y;
+    if (pRight > mLeft && pLeft < mRight && pBottom > mTop && pTop < mBottom) {
+      player.x = player.x < m.x ? mLeft - halfW : mRight + halfW;
+      player.vx = 0;
+      player.vy = 0;
+      gameOver = true;
+      return;
+    }
   }
 
   // --- slash ---
@@ -154,11 +250,17 @@ function update(dt) {
   }
   if (player.slashTimer > 0) {
     player.slashTimer = Math.max(0, player.slashTimer - dt);
-    if (slashHitsTarget()) target.hitTimer = HIT_FLASH;
+    for (const m of monsters) {
+      if (!m.dead && slashHitsMonster(m)) killMonster(m);
+    }
   }
 
-  target.hitTimer = Math.max(0, target.hitTimer - dt);
-  target.stompTimer = Math.max(0, target.stompTimer - dt);
+  // --- panel clear ---
+  if (spawnedThisPanel >= monstersPerPanel(panel) && monsters.every((m) => m.dead)) {
+    panelClearTimer = PANEL_CLEAR_DELAY;
+    jumpQueued = false;
+    slashQueued = false;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -204,6 +306,16 @@ function roundedPath(points, radius) {
 function drawPanel() {
   ctx.fillStyle = COLOR_PAPER;
   ctx.fillRect(0, 0, PLAYFIELD_W, PLAYFIELD_H);
+
+  // Minimal inking flash while a panel clear is being celebrated.
+  if (panelClearTimer > 0) {
+    const flash = panelClearTimer / PANEL_CLEAR_DELAY;
+    ctx.fillStyle = PANEL_FLASH_COLOR;
+    ctx.globalAlpha = 0.15 + flash * 0.25;
+    ctx.fillRect(PANEL_MARGIN, PANEL_MARGIN, PLAYFIELD_W - PANEL_MARGIN * 2, PLAYFIELD_H - PANEL_MARGIN * 2);
+    ctx.globalAlpha = 1;
+  }
+
   ctx.lineWidth = OUTLINE_WIDTH;
   ctx.strokeStyle = COLOR_INK;
   ctx.strokeRect(PANEL_MARGIN, PANEL_MARGIN, PLAYFIELD_W - PANEL_MARGIN * 2, PLAYFIELD_H - PANEL_MARGIN * 2);
@@ -212,16 +324,20 @@ function drawPanel() {
   ctx.fillRect(PANEL_MARGIN, GROUND_Y, PLAYFIELD_W - PANEL_MARGIN * 2, GROUND_THICKNESS);
 }
 
-function drawTarget() {
-  const squash = target.stompTimer > 0 ? STOMP_SQUASH * (target.stompTimer / HIT_FLASH) : 0;
-  const h = TARGET_H * (1 - squash);
-  const x = targetLeft();
-  const y = GROUND_Y - h;
-  ctx.fillStyle = target.hitTimer > 0 || target.stompTimer > 0 ? COLOR_TARGET_HIT : COLOR_TARGET;
-  ctx.fillRect(x, y, TARGET_W, h);
-  ctx.lineWidth = OUTLINE_WIDTH;
-  ctx.strokeStyle = COLOR_INK;
-  ctx.strokeRect(x, y, TARGET_W, h);
+function drawMonsters() {
+  for (const m of monsters) {
+    // Dead monsters stay bright for HIT_FLASH seconds before disappearing.
+    if (m.dead && m.hitTimer <= 0) continue;
+    const squash = m.hitTimer > 0 && !m.dead ? STOMP_SQUASH * (m.hitTimer / HIT_FLASH) : 0;
+    const h = m.h * (1 - squash);
+    const x = m.x - m.w / 2;
+    const y = m.y - h;
+    ctx.fillStyle = m.hitTimer > 0 ? COLOR_EYE : COLOR_MONSTER;
+    ctx.fillRect(x, y, m.w, h);
+    ctx.lineWidth = OUTLINE_WIDTH;
+    ctx.strokeStyle = COLOR_INK;
+    ctx.strokeRect(x, y, m.w, h);
+  }
 }
 
 function drawPlayer() {
@@ -264,6 +380,56 @@ function drawSlash() {
   ctx.restore();
 }
 
+function drawScore() {
+  ctx.save();
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.font = `bold ${SCORE_FONT_SIZE}px ${FONT_STACK}`;
+  ctx.lineWidth = OUTLINE_WIDTH;
+  ctx.strokeStyle = COLOR_INK;
+  const text = `SCORE: ${score}`;
+  const x = PANEL_MARGIN + 12;
+  const y = PANEL_MARGIN + 8;
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = COLOR_INK;
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+function drawPanelCounter() {
+  ctx.save();
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'top';
+  ctx.font = `bold ${PANEL_COUNTER_FONT_SIZE}px ${FONT_STACK}`;
+  ctx.lineWidth = OUTLINE_WIDTH;
+  ctx.strokeStyle = COLOR_INK;
+  const text = `PANEL ${panel}/8`;
+  const x = PLAYFIELD_W - PANEL_MARGIN - 12;
+  const y = PANEL_MARGIN + 10;
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = COLOR_INK;
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+function drawPanelClear() {
+  if (panelClearTimer <= 0) return;
+  const cx = PLAYFIELD_W / 2;
+  const cy = PLAYFIELD_H / 2;
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = COLOR_INK;
+  ctx.font = `bold ${PANEL_CLEAR_FONT_SIZE}px ${FONT_STACK}`;
+  ctx.lineWidth = OUTLINE_WIDTH * 2.5;
+  const text = `PANEL ${panel} CLEARED!`;
+  ctx.strokeText(text, cx, cy);
+  ctx.fillStyle = COLOR_EYE;
+  ctx.fillText(text, cx, cy);
+  ctx.restore();
+}
+
 // The end-of-run marker: inked "GAME OVER" plus the retry prompt, centred in the panel.
 function drawGameOver() {
   if (!gameOver) return;
@@ -289,6 +455,36 @@ function drawGameOver() {
   ctx.restore();
 }
 
+function drawVictory() {
+  if (!victory) return;
+  const cx = PLAYFIELD_W / 2;
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = COLOR_INK;
+
+  ctx.font = `bold ${VICTORY_FONT_SIZE}px ${FONT_STACK}`;
+  ctx.lineWidth = OUTLINE_WIDTH * 3;
+  ctx.strokeText(VICTORY_TEXT, cx, GAME_OVER_BANNER_Y);
+  ctx.fillStyle = COLOR_PLAYER;
+  ctx.fillText(VICTORY_TEXT, cx, GAME_OVER_BANNER_Y);
+
+  ctx.font = `bold ${GAME_OVER_HINT_SIZE}px ${FONT_STACK}`;
+  ctx.lineWidth = OUTLINE_WIDTH * 1.5;
+  const scoreY = GAME_OVER_BANNER_Y + GAME_OVER_HINT_GAP;
+  const scoreText = `FINAL SCORE: ${score}`;
+  ctx.strokeText(scoreText, cx, scoreY);
+  ctx.fillStyle = COLOR_INK;
+  ctx.fillText(scoreText, cx, scoreY);
+
+  const hintY = scoreY + GAME_OVER_HINT_GAP;
+  ctx.strokeText(VICTORY_HINT, cx, hintY);
+  ctx.fillStyle = COLOR_INK;
+  ctx.fillText(VICTORY_HINT, cx, hintY);
+  ctx.restore();
+}
+
 function draw() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = COLOR_PAPER;
@@ -296,10 +492,14 @@ function draw() {
   ctx.setTransform(view.scale, 0, 0, view.scale, view.x, view.y);
 
   drawPanel();
-  drawTarget();
+  drawMonsters();
   drawPlayer();
   drawSlash();
+  drawScore();
+  drawPanelCounter();
+  drawPanelClear();
   drawGameOver();
+  drawVictory();
 }
 
 // ---------------------------------------------------------------------------

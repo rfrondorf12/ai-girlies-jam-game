@@ -31,12 +31,28 @@ export const SLASH_ARC_SPREAD = 2.6;   // total angular sweep of the arc in radi
 export const SLASH_SAMPLES = 64;       // points sampled along the arc for hit detection
 export const SHOULDER_HEIGHT = 0.55;   // arc pivot height above the feet, as a fraction of player height
 
-// --- Test target ---
-export const TARGET_W = 64;      // target box width
-export const TARGET_H = 66;      // target box height
-export const TARGET_X = 640;     // target box centre x, sitting on the ground line
-export const HIT_FLASH = 0.22;   // seconds a slash hit or stomp keeps the target lit up
-export const STOMP_SQUASH = 0.2; // how flat the target squashes on a stomp, as a fraction of its height
+// --- Monsters ---
+export const MONSTER_W = 48;           // ground-crawling ink rectangle width
+export const MONSTER_H = 44;           // ground-crawling ink rectangle height
+export const MONSTER_SPEED = 110;      // crawling speed in units per second, moving left
+export const BASE_MONSTERS_PER_PANEL = 2; // quota base added to the current panel number
+export const SPAWN_INTERVAL = 2.0;     // seconds between monster spawns at panel 1
+export const SPAWN_PANEL_MULTIPLIER = 0.25; // per-panel factor that raises spawn rate (interval / multiplier)
+export const HIT_FLASH = 0.22;         // seconds a killed monster stays bright before disappearing
+export const STOMP_SQUASH = 0.2;       // how flat the monster squashes on a stomp, as a fraction of its height
+export const STOMP_BOUNCE_VELOCITY = -520; // small upward bounce after a successful stomp
+
+// --- Panels / scoring ---
+export const PANEL_CLEAR_DELAY = 1.4;  // seconds "PANEL N CLEARED!" stays on screen
+export const PANEL_CLEAR_SCORE = 100;  // points awarded for clearing a panel
+export const MONSTER_KILL_SCORE = 50;  // points awarded for each stomp or slash kill
+export const SCORE_FONT_SIZE = 24;     // score counter text size in playfield units
+export const PANEL_COUNTER_FONT_SIZE = 20; // panel X/8 counter text size
+export const PANEL_CLEAR_FONT_SIZE = 56;   // "PANEL N CLEARED!" text size
+export const VICTORY_FONT_SIZE = 72;   // victory banner text size
+export const VICTORY_TEXT = 'VICTORY!'; // banner shown after clearing panel 8
+export const VICTORY_HINT = 'Press R or Space to play again'; // prompt under victory banner
+export const PANEL_FLASH_COLOR = '#FFF4D2'; // bright ink flash behind the panel during a clear
 
 // --- Game over ---
 export const GAME_OVER_TEXT = 'GAME OVER!';        // banner shown when a run ends
@@ -52,7 +68,6 @@ export const COLOR_DEATH = '#C4342A';       // hero's body and banner ink once t
 export const COLOR_PAPER = '#F4EBD9';       // warm newsprint page
 export const COLOR_INK = '#1E1B1E';         // comic ink outline
 export const COLOR_PLAYER = '#E94B35';      // the hero's red body
-export const COLOR_EYE = '#FFF4D2';         // the hero's cream eye and hit flash
-export const COLOR_TARGET = '#1E1B1E';      // test target at rest
-export const COLOR_TARGET_HIT = '#FFF4D2';  // test target when hit
+export const COLOR_EYE = '#FFF4D2';         // the hero's cream eye and monster hit flash
+export const COLOR_MONSTER = '#1E1B1E';     // ground-crawling ink rectangle
 export const COLOR_GROUND = '#1E1B1E';      // ground line ink
