@@ -546,7 +546,7 @@ function drawScore() {
   const x = PANEL_MARGIN + 12;
   const y = PANEL_MARGIN + 8;
   ctx.strokeText(text, x, y);
-  ctx.fillStyle = 'transparent';
+  ctx.fillStyle = COLOR_PAPER;
   ctx.fillText(text, x, y);
   ctx.restore();
 }
@@ -562,7 +562,7 @@ function drawPanelCounter() {
   const x = PLAYFIELD_W - PANEL_MARGIN - 12;
   const y = PANEL_MARGIN + 10;
   ctx.strokeText(text, x, y);
-  ctx.fillStyle = 'transparent';
+  ctx.fillStyle = COLOR_PAPER;
   ctx.fillText(text, x, y);
   ctx.restore();
 }
@@ -581,7 +581,7 @@ function drawControlsHint() {
   const x = PANEL_MARGIN + CONTROLS_HINT_MARGIN;
   const y = PLAYFIELD_H - PANEL_MARGIN - CONTROLS_HINT_MARGIN;
   ctx.strokeText(CONTROLS_HINT, x, y);
-  ctx.fillStyle = 'transparent';
+  ctx.fillStyle = COLOR_PAPER;
   ctx.fillText(CONTROLS_HINT, x, y);
   ctx.restore();
 }
@@ -599,7 +599,7 @@ function drawPanelClear() {
   ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   const text = `PANEL ${panel} CLEARED!`;
   ctx.strokeText(text, cx, cy);
-  ctx.fillStyle = 'transparent';
+  ctx.fillStyle = COLOR_PAPER;
   ctx.fillText(text, cx, cy);
   ctx.restore();
 }
@@ -617,14 +617,14 @@ function drawGameOver() {
   ctx.font = `${GAME_OVER_FONT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   ctx.strokeText(GAME_OVER_TEXT, cx, GAME_OVER_BANNER_Y);
-  ctx.fillStyle = 'transparent';
+  ctx.fillStyle = COLOR_PAPER;
   ctx.fillText(GAME_OVER_TEXT, cx, GAME_OVER_BANNER_Y);
 
   ctx.font = `${GAME_OVER_HINT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   const hintY = GAME_OVER_BANNER_Y + GAME_OVER_HINT_GAP;
   ctx.strokeText(RESTART_HINT, cx, hintY);
-  ctx.fillStyle = 'transparent';
+  ctx.fillStyle = COLOR_PAPER;
   ctx.fillText(RESTART_HINT, cx, hintY);
   ctx.restore();
 }
@@ -641,7 +641,7 @@ function drawVictory() {
   ctx.font = `${VICTORY_FONT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   ctx.strokeText(VICTORY_TEXT, cx, GAME_OVER_BANNER_Y);
-  ctx.fillStyle = 'transparent';
+  ctx.fillStyle = COLOR_PAPER;
   ctx.fillText(VICTORY_TEXT, cx, GAME_OVER_BANNER_Y);
 
   ctx.font = `${GAME_OVER_HINT_SIZE}px ${FONT_STACK}`;
@@ -649,12 +649,12 @@ function drawVictory() {
   const scoreY = GAME_OVER_BANNER_Y + GAME_OVER_HINT_GAP;
   const scoreText = `FINAL SCORE: ${score}`;
   ctx.strokeText(scoreText, cx, scoreY);
-  ctx.fillStyle = 'transparent';
+  ctx.fillStyle = COLOR_PAPER;
   ctx.fillText(scoreText, cx, scoreY);
 
   const hintY = scoreY + GAME_OVER_HINT_GAP;
   ctx.strokeText(VICTORY_HINT, cx, hintY);
-  ctx.fillStyle = 'transparent';
+  ctx.fillStyle = COLOR_PAPER;
   ctx.fillText(VICTORY_HINT, cx, hintY);
   ctx.restore();
 }
