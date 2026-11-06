@@ -1,5 +1,9 @@
 # Starter Cards
 
+**Selected Card:** **Card 2: Jumper (Extended with Runner & Slash interactions)**  
+**Team:** ai-girlies (Reese Frondorf)  
+**Game:** Unfinished Comic: 8-Panel Run  
+
 Pick **one** card. The card sets the one action you'll build around. Its **Allowed** list is the safe path: what the jam models can build well in a day. **Stretch** items wait until the core loop is fun (after M4). You bring the world, the character, and the twist.
 
 This is Nathan's guidance, not a fence. Richer art, more juice, and a bigger world are fine as long as the game stays one repeated action. Claude will point out when an idea gets big and remind you of the clock; then it's your call.

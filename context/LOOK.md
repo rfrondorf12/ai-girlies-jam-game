@@ -2,6 +2,8 @@
 
 How the game looks and sounds. References help Claude more than adjectives.
 
+DO NOT STRAY FROM THE DESIGN REFERENCE STYLES. 
+
 ## Mood
 
 *Three or four words for how it should feel.*
@@ -25,6 +27,8 @@ How the game looks and sounds. References help Claude more than adjectives.
 > - *Geometry Dash* for snappy, instant-restart rhythmic jumping and clear obstacle readability.
 > - Vintage 1960s Sunday funny papers and risograph printing with visible halftone dot patterns and ink offsets.
 > - ![[Pasted image 20261106123855.png]]
+> - ![[Screenshot 2026-11-06 at 2.27.10 PM.png]]![[Screenshot 2026-11-06 at 2.26.57 PM.png]]![[Screenshot 2026-11-06 at 2.26.43 PM.png]]
 > - 
-> - ![[Pasted image 20261106123908.png]]
+> - ![[Screenshot 2026-11-06 at 2.26.31 PM.png]]
+> - [[Screenshot 2026-11-06 at 2.25.01 PM.png]]![[Pasted image 20261106123908.png]]
 > - ![[Screenshot 2026-11-06 at 12.09.14 PM.png]]
