@@ -7,7 +7,7 @@ export const PANEL_MARGIN = 22;      // inset of the comic panel border from the
 export const GROUND_Y = 460;         // y of the ground line, measured from the top of the playfield
 export const GROUND_THICKNESS = 6;   // thickness of the ink ground line
 export const OUTLINE_WIDTH = 4;      // chunky ink outline weight for shapes and player
-export const TEXT_OUTLINE_WIDTH = 1.5; // much thinner ink outline so comic lettering stays readable
+export const TEXT_OUTLINE_WIDTH = 2.0; // ink outline for lettering: thick enough to read, thin enough to avoid overlap
 export const MAX_DT = 1 / 30;        // longest step we simulate, so a stalled tab can't teleport the player
 
 // --- Player ---
@@ -54,12 +54,12 @@ export const PANEL_COUNTER_FONT_SIZE = 20; // panel X/8 counter text size
 export const PANEL_CLEAR_FONT_SIZE = 56;   // "PANEL N CLEARED!" text size
 export const VICTORY_FONT_SIZE = 72;   // victory banner text size
 export const VICTORY_TEXT = 'VICTORY!'; // banner shown after clearing panel 8
-export const VICTORY_HINT = 'Press R or Space to play again'; // prompt under victory banner
+export const VICTORY_HINT = 'R / SPACE to play again'; // prompt under victory banner
 export const PANEL_FLASH_COLOR = '#FFF4D2'; // bright ink flash behind the panel during a clear
 
 // --- Game over ---
 export const GAME_OVER_TEXT = 'GAME OVER!';        // banner shown when a run ends
-export const RESTART_HINT = 'Press R or Space to retry'; // prompt printed under the banner
+export const RESTART_HINT = 'R / SPACE to retry';  // prompt printed under the banner
 export const GAME_OVER_BANNER_Y = 230;             // banner centre y in playfield units
 export const GAME_OVER_FONT_SIZE = 72;             // banner text size in playfield units
 export const GAME_OVER_HINT_SIZE = 24;             // restart hint text size in playfield units
