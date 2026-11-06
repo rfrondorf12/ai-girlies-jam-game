@@ -45,6 +45,7 @@ export const MONSTER_FLY_Y = 388;        // bottom y of a flying monster: above 
 export const MONSTER_FLY_BOB = 14;       // how far a flying monster drifts up and down, in units
 export const MONSTER_FLY_BOB_SPEED = 2.4; // radians per second of the flight bob
 export const MONSTER_HALFTONE_OPACITY = 0.14; // dot shading over each enemy's flat colour
+export const MONSTER_STREAK_ALPHA = 0.55; // opacity of the eraser's ink speed lines, so they read over cream paper
 export const MONSTER_SNIP_SPEED = 6;     // radians per second the scissor blades open and close
 export const MONSTER_WING_SPEED = 9;     // radians per second of a bird's wing flap
 export const MONSTER_WORM_WAVE_SPEED = 5; // radians per second of the worm's crawl wave
