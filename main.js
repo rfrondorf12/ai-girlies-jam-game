@@ -795,37 +795,46 @@ function drawMonsters() {
   }
 }
 
+function drawMitten(x, y, r) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+}
+
 function drawPlayerShape(w, h) {
   if (world === 0) {
-    // Print Shop: Inky — a black teardrop with the point facing forward.
+    // Triangle Guy: a rounded red triangle with a flowing cape behind him.
+    const cy = -h / 2;
+    // Cape.
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.35, -h * 0.88);
+    ctx.quadraticCurveTo(-w * 1.05, -h * 0.55, -w * 0.75, -h * 0.12);
+    ctx.quadraticCurveTo(-w * 0.55, -h * 0.22, -w * 0.45, 0);
+    ctx.lineTo(-w * 0.35, -h * 0.15);
+    ctx.closePath();
+    ctx.fillStyle = gameOver ? COLOR_DEATH : WORLD_PLAYER_FILL[world];
+    ctx.fill();
+    ctx.stroke();
+    // Body.
+    roundedPath([
+      { x: -w / 2, y: -h },
+      { x: w / 2, y: -h / 2 },
+      { x: -w / 2, y: 0 },
+    ], Math.min(w, h) * 0.32);
+  } else if (world === 1) {
+    // Ink Blot: a black teardrop with a small trailing droplet.
     const cy = -h / 2;
     ctx.beginPath();
-    ctx.moveTo(w * 0.5, cy);
-    ctx.bezierCurveTo(w * 0.5, cy - h * 0.55, -w * 0.45, cy - h * 0.55, -w * 0.45, cy);
-    ctx.bezierCurveTo(-w * 0.45, cy + h * 0.35, w * 0.1, cy + h * 0.5, w * 0.5, cy);
+    ctx.moveTo(w * 0.48, cy);
+    ctx.bezierCurveTo(w * 0.48, cy - h * 0.55, -w * 0.42, cy - h * 0.55, -w * 0.42, cy);
+    ctx.bezierCurveTo(-w * 0.42, cy + h * 0.35, w * 0.12, cy + h * 0.5, w * 0.48, cy);
     ctx.closePath();
-  } else if (world === 1) {
-    // Garden: Squiggle — a red wavy worm ribbon.
-    const topY = -h * 0.75;
-    const botY = -h * 0.25;
-    const amp = h * 0.18;
-    const seg = 24;
-    ctx.beginPath();
-    for (let i = 0; i <= seg; i++) {
-      const t = i / seg;
-      const x = -w * 0.5 + t * w;
-      const y = topY + Math.sin(t * Math.PI * 3) * amp;
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    for (let i = seg; i >= 0; i--) {
-      const t = i / seg;
-      const x = -w * 0.5 + t * w;
-      const y = botY + Math.sin(t * Math.PI * 3) * amp;
-      ctx.lineTo(x, y);
-    }
-    ctx.closePath();
+    // Trailing droplet.
+    ctx.moveTo(-w * 0.62, -h * 0.45);
+    ctx.arc(-w * 0.62, -h * 0.45, w * 0.12, 0, Math.PI * 2);
   } else {
-    // Midnight: Crescent — an orange crescent moon opening forward.
+    // Crescent Moon: a cream crescent opening forward.
     const cy = -h / 2;
     const r = h * 0.58;
     const outerX = -w * 0.1;
@@ -837,32 +846,61 @@ function drawPlayerShape(w, h) {
   }
 }
 
-function drawPlayerEyes(w, h) {
+function drawPlayerFace(w, h) {
   ctx.fillStyle = WORLD_PLAYER_EYE[world];
   ctx.strokeStyle = COLOR_INK;
   ctx.lineWidth = OUTLINE_WIDTH * 0.75;
   if (world === 0) {
-    // Inky: two cream eye holes near the top of the drop.
+    // Triangle Guy: one big oval eye and a determined eyebrow.
     ctx.beginPath();
-    ctx.ellipse(-w * 0.08, -h * 0.62, w * 0.1, h * 0.13, 0, 0, Math.PI * 2);
+    ctx.ellipse(w * 0.02, -h * 0.55, w * 0.14, h * 0.18, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+    // Eyebrow.
     ctx.beginPath();
-    ctx.ellipse(w * 0.12, -h * 0.58, w * 0.09, h * 0.12, 0, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(-w * 0.1, -h * 0.78);
+    ctx.quadraticCurveTo(w * 0.05, -h * 0.85, w * 0.18, -h * 0.75);
     ctx.stroke();
   } else if (world === 1) {
-    // Squiggle: one big cream eye at the front of the worm.
+    // Ink Blot: two cream eye holes and a worried brow.
     ctx.beginPath();
-    ctx.ellipse(w * 0.28, -h * 0.48, w * 0.14, h * 0.18, 0, 0, Math.PI * 2);
+    ctx.ellipse(-w * 0.06, -h * 0.62, w * 0.1, h * 0.13, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(w * 0.14, -h * 0.58, w * 0.09, h * 0.12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // Worried lines.
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.18, -h * 0.78);
+    ctx.quadraticCurveTo(0, -h * 0.88, w * 0.22, -h * 0.76);
+    ctx.stroke();
   } else {
-    // Crescent: one yellow eye sitting inside the moon bowl.
+    // Crescent: one yellow eye inside the moon bowl.
     ctx.beginPath();
     ctx.arc(-w * 0.02, -h * 0.5, w * 0.13, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+  }
+}
+
+function drawPlayerHands(w, h) {
+  ctx.fillStyle = gameOver ? COLOR_DEATH : WORLD_PLAYER_FILL[world];
+  ctx.strokeStyle = COLOR_INK;
+  ctx.lineWidth = OUTLINE_WIDTH * 0.75;
+  if (world === 0) {
+    // Triangle Guy: mittens at front and back.
+    drawMitten(w * 0.42, -h * 0.35, w * 0.11);
+    drawMitten(-w * 0.25, -h * 0.18, w * 0.1);
+  } else if (world === 1) {
+    // Ink Blot: tiny mittens.
+    drawMitten(w * 0.25, -h * 0.25, w * 0.09);
+    drawMitten(-w * 0.32, -h * 0.22, w * 0.08);
+  } else {
+    // Crescent: small mittens at the tips.
+    drawMitten(w * 0.32, -h * 0.22, w * 0.09);
+    drawMitten(w * 0.22, -h * 0.78, w * 0.09);
   }
 }
 
@@ -881,7 +919,8 @@ function drawPlayer() {
   ctx.fill();
   ctx.stroke();
 
-  drawPlayerEyes(w, h);
+  drawPlayerHands(w, h);
+  drawPlayerFace(w, h);
   ctx.restore();
 }
 

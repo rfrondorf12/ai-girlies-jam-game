@@ -120,17 +120,16 @@ export const COLOR_MONSTER = '#242125';     // ground-crawling ink rectangle
 export const COLOR_GROUND = '#242125';      // ground line ink
 
 // --- Worlds / player costumes ---
-// World themes from SCOPE map to reference roster shapes:
-// 0 = Print Shop / Ink Drop ("Inky"), 1 = Garden / Worm ("Squiggle"), 2 = Midnight / Crescent Moon
+// Reference character designs: 0 = Triangle Guy, 1 = Ink Blot, 2 = Crescent Moon
 export const WORLD_COUNT = 3;
-export const WORLD_PAPER = ['#F2E5C4', '#F2E5C4', '#F2E5C4']; // keep aged-cream paper across worlds
-export const WORLD_PLAYER_FILL = ['#242125', '#E94B35', '#E98B35'];
+export const WORLD_PAPER = ['#F2E5C4', '#F2E5C4', '#F2E5C4']; // aged-cream paper across worlds
+export const WORLD_PLAYER_FILL = ['#E94B35', '#242125', '#FFF4D2'];
 export const WORLD_PLAYER_EYE = ['#F2E5C4', '#F2E5C4', '#E9B949'];
 
 // --- World environment styling ---
-export const WORLD_SKY_TOP = ['#F2E5C4', '#D8E8E0', '#18233C'];
-export const WORLD_SKY_BOTTOM = ['#E9AFA3', '#A8D5BA', '#4A5B8A'];
-export const WORLD_PLATFORM_FILL = ['#C44B5A', '#5A8A3A', '#5A4A8A'];
+export const WORLD_SKY_TOP = ['#F2E5C4', '#E8D8C8', '#18233C'];
+export const WORLD_SKY_BOTTOM = ['#E9A0A0', '#A8D5BA', '#3A4A6E'];
+export const WORLD_PLATFORM_FILL = ['#C44B5A', '#76A035', '#5A4A8A'];
 export const WORLD_PLATFORM_TOP = ['#E9B949', '#E9B949', '#E9B949'];
 export const HALFTONE_OPACITY = 0.18;
 
