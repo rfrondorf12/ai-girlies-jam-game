@@ -12,6 +12,7 @@ import {
   VICTORY_FONT_SIZE, VICTORY_TEXT, VICTORY_HINT,
   GAME_OVER_TEXT, RESTART_HINT, GAME_OVER_BANNER_Y, GAME_OVER_FONT_SIZE, GAME_OVER_HINT_SIZE,
   GAME_OVER_HINT_GAP, FONT_STACK,
+  CONTROLS_HINT, CONTROLS_HINT_SIZE, CONTROLS_HINT_DURATION, CONTROLS_HINT_MARGIN,
   COLOR_PAPER, COLOR_INK, COLOR_PLAYER, COLOR_EYE, COLOR_MONSTER, COLOR_GROUND,
   COLOR_DEATH, PANEL_FLASH_COLOR,
 } from './tuning.js';
@@ -36,6 +37,8 @@ let gameOver = false;         // run has ended: physics freezes, the panel keeps
 let victory = false;          // all 8 panels cleared
 let jumpQueued = false;       // a Space / ArrowUp / KeyW press waiting for update() to spend on a jump
 let slashQueued = false;      // a '/' press waiting for update() to spend on a swing
+let runTime = 0;              // seconds of active run, drives the temporary controls hint
+let hasSlashed = false;       // true once the player has swung, which hides the controls hint
 
 function monstersPerPanel(p) {
   return BASE_MONSTERS_PER_PANEL + p;
@@ -71,6 +74,8 @@ function reset() {
   victory = false;
   jumpQueued = false;
   slashQueued = false;
+  runTime = 0;
+  hasSlashed = false;
 }
 reset();
 
@@ -168,6 +173,9 @@ function update(dt) {
   }
 
   // --- run ---
+  // Only live play counts, so the temporary hint's clock pauses on overlays.
+  runTime += dt;
+
   let dir = 0;
   if (held.has('ArrowLeft') || held.has('KeyA')) dir -= 1;
   if (held.has('ArrowRight') || held.has('KeyD')) dir += 1;
@@ -254,6 +262,7 @@ function update(dt) {
   if (slashQueued) {
     player.slashTimer = SLASH_DURATION;
     slashQueued = false;
+    hasSlashed = true;
   }
   if (player.slashTimer > 0) {
     player.slashTimer = Math.max(0, player.slashTimer - dt);
@@ -391,7 +400,7 @@ function drawScore() {
   ctx.save();
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.font = `bold ${SCORE_FONT_SIZE}px ${FONT_STACK}`;
+  ctx.font = `${SCORE_FONT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = OUTLINE_WIDTH;
   ctx.strokeStyle = COLOR_INK;
   const text = `SCORE: ${score}`;
@@ -407,7 +416,7 @@ function drawPanelCounter() {
   ctx.save();
   ctx.textAlign = 'right';
   ctx.textBaseline = 'top';
-  ctx.font = `bold ${PANEL_COUNTER_FONT_SIZE}px ${FONT_STACK}`;
+  ctx.font = `${PANEL_COUNTER_FONT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = OUTLINE_WIDTH;
   ctx.strokeStyle = COLOR_INK;
   const text = `PANEL ${panel}/8`;
@@ -416,6 +425,25 @@ function drawPanelCounter() {
   ctx.strokeText(text, x, y);
   ctx.fillStyle = COLOR_INK;
   ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+// A temporary nudge line in the bottom-left of the panel: it goes away as soon
+// as the player has slashed once, or after CONTROLS_HINT_DURATION seconds.
+function drawControlsHint() {
+  if (hasSlashed || runTime >= CONTROLS_HINT_DURATION) return;
+  ctx.save();
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.font = `${CONTROLS_HINT_SIZE}px ${FONT_STACK}`;
+  ctx.lineWidth = OUTLINE_WIDTH;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = COLOR_INK;
+  const x = PANEL_MARGIN + CONTROLS_HINT_MARGIN;
+  const y = PLAYFIELD_H - PANEL_MARGIN - CONTROLS_HINT_MARGIN;
+  ctx.strokeText(CONTROLS_HINT, x, y);
+  ctx.fillStyle = COLOR_INK;
+  ctx.fillText(CONTROLS_HINT, x, y);
   ctx.restore();
 }
 
@@ -428,7 +456,7 @@ function drawPanelClear() {
   ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round';
   ctx.strokeStyle = COLOR_INK;
-  ctx.font = `bold ${PANEL_CLEAR_FONT_SIZE}px ${FONT_STACK}`;
+  ctx.font = `${PANEL_CLEAR_FONT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = OUTLINE_WIDTH * 2.5;
   const text = `PANEL ${panel} CLEARED!`;
   ctx.strokeText(text, cx, cy);
@@ -447,13 +475,13 @@ function drawGameOver() {
   ctx.lineJoin = 'round';
   ctx.strokeStyle = COLOR_INK;
 
-  ctx.font = `bold ${GAME_OVER_FONT_SIZE}px ${FONT_STACK}`;
+  ctx.font = `${GAME_OVER_FONT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = OUTLINE_WIDTH * 3;
   ctx.strokeText(GAME_OVER_TEXT, cx, GAME_OVER_BANNER_Y);
   ctx.fillStyle = COLOR_DEATH;
   ctx.fillText(GAME_OVER_TEXT, cx, GAME_OVER_BANNER_Y);
 
-  ctx.font = `bold ${GAME_OVER_HINT_SIZE}px ${FONT_STACK}`;
+  ctx.font = `${GAME_OVER_HINT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = OUTLINE_WIDTH * 1.5;
   const hintY = GAME_OVER_BANNER_Y + GAME_OVER_HINT_GAP;
   ctx.strokeText(RESTART_HINT, cx, hintY);
@@ -471,13 +499,13 @@ function drawVictory() {
   ctx.lineJoin = 'round';
   ctx.strokeStyle = COLOR_INK;
 
-  ctx.font = `bold ${VICTORY_FONT_SIZE}px ${FONT_STACK}`;
+  ctx.font = `${VICTORY_FONT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = OUTLINE_WIDTH * 3;
   ctx.strokeText(VICTORY_TEXT, cx, GAME_OVER_BANNER_Y);
   ctx.fillStyle = COLOR_PLAYER;
   ctx.fillText(VICTORY_TEXT, cx, GAME_OVER_BANNER_Y);
 
-  ctx.font = `bold ${GAME_OVER_HINT_SIZE}px ${FONT_STACK}`;
+  ctx.font = `${GAME_OVER_HINT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = OUTLINE_WIDTH * 1.5;
   const scoreY = GAME_OVER_BANNER_Y + GAME_OVER_HINT_GAP;
   const scoreText = `FINAL SCORE: ${score}`;
@@ -504,6 +532,7 @@ function draw() {
   drawSlash();
   drawScore();
   drawPanelCounter();
+  drawControlsHint();
   drawPanelClear();
   drawGameOver();
   drawVictory();

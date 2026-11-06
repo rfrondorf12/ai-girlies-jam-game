@@ -65,6 +65,12 @@ export const GAME_OVER_HINT_SIZE = 24;             // restart hint text size in 
 export const GAME_OVER_HINT_GAP = 58;              // vertical gap between banner centre and hint centre
 export const FONT_STACK = 'system-ui, sans-serif'; // canvas font stack for panel text
 
+// --- Controls hint (temporary, bottom-left of the panel) ---
+export const CONTROLS_HINT = '← → MOVE   SPACE/UP/W JUMP   / SLASH'; // temporary controls line
+export const CONTROLS_HINT_SIZE = 16;   // hint text size in playfield units
+export const CONTROLS_HINT_DURATION = 8; // seconds the hint stays if the player never slashes
+export const CONTROLS_HINT_MARGIN = 14; // gap between the hint and the panel edge
+
 // --- Colours ---
 export const COLOR_DEATH = '#C4342A';       // hero's body and banner ink once the run has ended
 export const COLOR_PAPER = '#F4EBD9';       // warm newsprint page
