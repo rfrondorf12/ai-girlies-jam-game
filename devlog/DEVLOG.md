@@ -47,7 +47,7 @@ Format for each playtest (after M2 and after M3):
 ### 15:59: Stylized obstacles instead of squares
 - **Changed:** Claude first made the obstacles squares. We changed them to flying scissors and stars.
 - **Expected:** Didn't predict.
-- **Saw:** Not said yet.
+- **Saw:** The scissors and stars played well when tested.
 - **Decided, and why (VR, RF):** Stylized obstacles add to the style and interest of the gameplay.
 
 ## Reflection
