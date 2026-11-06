@@ -1,9 +1,8 @@
 // M3 feel: 8-panel comic runner with spawning monsters, stomp, slash, score, instant restart, and procedural Web Audio SFX.
 import {
-  PLAYFIELD_W, PLAYFIELD_H, PANEL_MARGIN, GROUND_Y, GROUND_THICKNESS, OUTLINE_WIDTH, TEXT_OUTLINE_WIDTH, MAX_DT,
+  PLAYFIELD_W, PLAYFIELD_H, PANEL_MARGIN, GROUND_Y, OUTLINE_WIDTH, TEXT_OUTLINE_WIDTH, MAX_DT,
   GRAVITY, MAX_FALL_SPEED, JUMP_VELOCITY, MAX_JUMPS, DOUBLE_JUMP_VELOCITY,
   MOVE_SPEED, PLAYER_W, PLAYER_H, PLAYER_START_X,
-  SHAPE_ROUND, EYE_OFFSET_X, EYE_OFFSET_Y, EYE_RADIUS_X, EYE_RADIUS_Y,
   SLASH_DURATION, SLASH_REACH, SLASH_THICKNESS, SLASH_ARC_SPREAD, SLASH_SAMPLES, SHOULDER_HEIGHT,
   MONSTER_W, MONSTER_H, MONSTER_SPEED, BASE_MONSTERS_PER_PANEL, SPAWN_INTERVAL, SPAWN_PANEL_MULTIPLIER,
   HIT_FLASH, STOMP_SQUASH, STOMP_BOUNCE_VELOCITY,
@@ -15,7 +14,7 @@ import {
   VICTORY_HINT_LINE1, VICTORY_HINT_LINE2,
   PAUSED_TEXT, PAUSED_HINT, PAUSED_FONT_SIZE,
   CONTROLS_HINT, CONTROLS_HINT_SIZE, CONTROLS_HINT_DURATION, CONTROLS_HINT_MARGIN,
-  COLOR_PAPER, COLOR_INK, COLOR_PLAYER, COLOR_EYE, COLOR_MONSTER, COLOR_GROUND,
+  COLOR_PAPER, COLOR_INK, COLOR_EYE, COLOR_MONSTER,
   COLOR_DEATH, PANEL_FLASH_COLOR,
   WORLD_COUNT, WORLD_PAPER, WORLD_PLAYER_FILL, WORLD_PLAYER_EYE,
   WORLD_SKY_TOP, WORLD_SKY_BOTTOM, WORLD_PLATFORM_FILL, WORLD_PLATFORM_TOP, HALFTONE_OPACITY, STAGES_PER_PANEL,
@@ -93,7 +92,8 @@ let fps = 60;
 let fpsAccumulator = 0;
 let fpsFrameCount = 0;
 let avgFps = 60;
-let minFps = 60;
+let minFps = Infinity;
+let touchDir = 0;             // -1 = left half of screen held, 1 = right half, 0 = none
 
 function monstersPerPanel(p) {
   return BASE_MONSTERS_PER_PANEL + p;
@@ -296,20 +296,43 @@ addEventListener('keydown', (e) => {
 addEventListener('keyup', (e) => held.delete(e.code));
 addEventListener('blur', () => held.clear());
 
-// Mobile: a tap anywhere on the canvas does the one action (jump). A two-finger tap slashes.
+// Mobile: left half of the screen moves left, right half moves right. Tap jumps; a two-finger tap slashes.
 canvas.addEventListener('touchstart', (e) => {
   e.preventDefault();
   initAudio();
+  updateTouchDir(e.touches);
   if (gameOver || victory) {
     reset();
     return;
   }
   if (e.touches.length >= 2) {
     slashQueued = true;
-  } else {
-    jumpQueued = true;
+    return;
   }
+  jumpQueued = true;
 }, { passive: false });
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  updateTouchDir(e.touches);
+}, { passive: false });
+canvas.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  updateTouchDir(e.touches);
+}, { passive: false });
+
+function updateTouchDir(touches) {
+  if (touches.length === 0) {
+    touchDir = 0;
+    return;
+  }
+  // Use the leftmost touch for direction when multiple fingers are down.
+  let leftmost = touches[0];
+  for (const t of touches) {
+    if (t.clientX < leftmost.clientX) leftmost = t;
+  }
+  const half = window.innerWidth / 2;
+  touchDir = leftmost.clientX < half ? -1 : 1;
+}
 
 // ---------------------------------------------------------------------------
 // Update
@@ -387,8 +410,8 @@ function update(dt) {
   runTime += dt;
 
   let dir = 0;
-  if (held.has('ArrowLeft') || held.has('KeyA')) dir -= 1;
-  if (held.has('ArrowRight') || held.has('KeyD')) dir += 1;
+  if (held.has('ArrowLeft') || held.has('KeyA') || touchDir < 0) dir -= 1;
+  if (held.has('ArrowRight') || held.has('KeyD') || touchDir > 0) dir += 1;
   player.vx = dir * MOVE_SPEED;
   if (dir !== 0) player.facing = dir;
   player.x += player.vx * dt;
@@ -1250,7 +1273,13 @@ function drawGameOver() {
 
   ctx.font = `${GAME_OVER_HINT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = TEXT_OUTLINE_WIDTH;
-  const hintY1 = GAME_OVER_BANNER_Y + GAME_OVER_HINT_GAP;
+  const scoreY = GAME_OVER_BANNER_Y + GAME_OVER_HINT_GAP;
+  const scoreText = `FINAL SCORE ${score}`;
+  ctx.strokeText(scoreText, cx, scoreY);
+  ctx.fillStyle = currentPaper;
+  ctx.fillText(scoreText, cx, scoreY);
+
+  const hintY1 = scoreY + GAME_OVER_HINT_SIZE + 10;
   ctx.strokeText(RESTART_HINT_LINE1, cx, hintY1);
   ctx.fillStyle = currentPaper;
   ctx.fillText(RESTART_HINT_LINE1, cx, hintY1);
@@ -1357,7 +1386,8 @@ function drawFPS() {
   ctx.textBaseline = 'top';
   ctx.lineWidth = 1;
   ctx.strokeStyle = COLOR_INK;
-  const text = `FPS ${Math.round(fps)} AVG ${Math.round(avgFps)} MIN ${Math.round(minFps)}`;
+  const minText = minFps === Infinity ? '--' : Math.round(minFps);
+  const text = `FPS ${Math.round(fps)} AVG ${Math.round(avgFps)} MIN ${minText}`;
   ctx.strokeText(text, PANEL_MARGIN + 8, PANEL_MARGIN + 42);
   ctx.fillStyle = '#F2E5C4';
   ctx.fillText(text, PANEL_MARGIN + 8, PANEL_MARGIN + 42);
@@ -1370,13 +1400,14 @@ function drawFPS() {
 
 let lastTime = performance.now();
 function frame(now) {
-  const dt = Math.min((now - lastTime) / 1000, MAX_DT);
+  const rawDt = (now - lastTime) / 1000;
+  const dt = Math.min(rawDt, MAX_DT);
   lastTime = now;
   update(dt);
   draw();
 
   if (SHOW_FPS) {
-    fps = 1 / Math.max(dt, 0.0001);
+    fps = 1 / Math.max(rawDt, 0.0001);
     fpsAccumulator += fps;
     fpsFrameCount++;
     if (fpsFrameCount >= 30) {
