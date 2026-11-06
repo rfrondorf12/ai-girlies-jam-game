@@ -560,7 +560,7 @@ function drawScore() {
   ctx.font = `${SCORE_FONT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   ctx.strokeStyle = COLOR_INK;
-  const text = `SCORE: ${score}`;
+  const text = `SCORE ${score}`;
   const x = PANEL_MARGIN + 12;
   const y = PANEL_MARGIN + 8;
   ctx.strokeText(text, x, y);
@@ -668,7 +668,7 @@ function drawVictory() {
   ctx.font = `${GAME_OVER_HINT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   const scoreY = GAME_OVER_BANNER_Y + GAME_OVER_HINT_GAP;
-  const scoreText = `FINAL SCORE: ${score}`;
+  const scoreText = `FINAL SCORE ${score}`;
   ctx.strokeText(scoreText, cx, scoreY);
   ctx.fillStyle = COLOR_PAPER;
   ctx.fillText(scoreText, cx, scoreY);
