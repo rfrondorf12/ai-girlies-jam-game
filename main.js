@@ -85,6 +85,16 @@ let slashQueued = false;      // a '/' press waiting for update() to spend on a 
 let runTime = 0;              // seconds of active run, drives the temporary controls hint
 let hasSlashed = false;       // true once the player has swung, which hides the controls hint
 
+// Debug / performance overlays, enabled via ?fps and ?debug query parameters.
+const urlParams = new URLSearchParams(location.search);
+const SHOW_FPS = urlParams.has('fps');
+const DEBUG_COLLIDERS = urlParams.has('debug');
+let fps = 60;
+let fpsAccumulator = 0;
+let fpsFrameCount = 0;
+let avgFps = 60;
+let minFps = 60;
+
 function monstersPerPanel(p) {
   return BASE_MONSTERS_PER_PANEL + p;
 }
@@ -285,6 +295,21 @@ addEventListener('keydown', (e) => {
 });
 addEventListener('keyup', (e) => held.delete(e.code));
 addEventListener('blur', () => held.clear());
+
+// Mobile: a tap anywhere on the canvas does the one action (jump). A two-finger tap slashes.
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  initAudio();
+  if (gameOver || victory) {
+    reset();
+    return;
+  }
+  if (e.touches.length >= 2) {
+    slashQueued = true;
+  } else {
+    jumpQueued = true;
+  }
+}, { passive: false });
 
 // ---------------------------------------------------------------------------
 // Update
@@ -1308,6 +1333,35 @@ function draw() {
   drawGameOver();
   drawVictory();
   drawPaused();
+  if (DEBUG_COLLIDERS) drawDebugColliders();
+  if (SHOW_FPS) drawFPS();
+}
+
+function drawDebugColliders() {
+  ctx.save();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#00FF00';
+  ctx.strokeRect(player.x - PLAYER_W / 2, player.y - PLAYER_H, PLAYER_W, PLAYER_H);
+  ctx.strokeStyle = '#FF0000';
+  for (const m of monsters) {
+    if (m.dead && m.hitTimer <= 0) continue;
+    ctx.strokeRect(m.x - m.w / 2, m.y - m.h, m.w, m.h);
+  }
+  ctx.restore();
+}
+
+function drawFPS() {
+  ctx.save();
+  ctx.font = '14px monospace';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = COLOR_INK;
+  const text = `FPS ${Math.round(fps)} AVG ${Math.round(avgFps)} MIN ${Math.round(minFps)}`;
+  ctx.strokeText(text, PANEL_MARGIN + 8, PANEL_MARGIN + 42);
+  ctx.fillStyle = '#F2E5C4';
+  ctx.fillText(text, PANEL_MARGIN + 8, PANEL_MARGIN + 42);
+  ctx.restore();
 }
 
 // ---------------------------------------------------------------------------
@@ -1320,6 +1374,19 @@ function frame(now) {
   lastTime = now;
   update(dt);
   draw();
+
+  if (SHOW_FPS) {
+    fps = 1 / Math.max(dt, 0.0001);
+    fpsAccumulator += fps;
+    fpsFrameCount++;
+    if (fpsFrameCount >= 30) {
+      avgFps = fpsAccumulator / fpsFrameCount;
+      minFps = Math.min(minFps, avgFps);
+      fpsAccumulator = 0;
+      fpsFrameCount = 0;
+    }
+  }
+
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
