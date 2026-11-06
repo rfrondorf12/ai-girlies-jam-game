@@ -26,6 +26,12 @@ Format for each playtest (after M2 and after M3):
 - **Bored or stuck:**
 - **What we'll change (who decided):**
 
+### 13:48: Jump keys and double jump
+- **Changed:** Space, Up, and W all jump. Added a double jump: a second jump when the jump button is pressed again quickly.
+- **Expected:** A quick second press makes the second jump go twice as high as a single jump.
+- **Saw:** Not played yet.
+- **Decided, and why (RF):** Double jump makes the game more interactive and can help dodge monsters.
+
 ## Reflection
 
 *At the end: What did you decide that Claude didn't? What did you reject from Claude, and why? What would you do with another jam session?*
