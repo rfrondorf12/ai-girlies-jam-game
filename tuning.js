@@ -118,3 +118,9 @@ export const COLOR_PLAYER = '#E94B35';      // the hero's red body
 export const COLOR_EYE = '#FFF4D2';         // the hero's cream eye and monster hit flash
 export const COLOR_MONSTER = '#1E1B1E';     // ground-crawling ink rectangle
 export const COLOR_GROUND = '#1E1B1E';      // ground line ink
+
+// --- Worlds / player costumes ---
+export const WORLD_COUNT = 3;
+// 0 = Print Shop (red wedge / ink drop), 1 = Garden (pink worm), 2 = Midnight (cream crescent)
+export const WORLD_PLAYER_FILL = ['#E94B35', '#E88B9A', '#FFF4D2'];
+export const WORLD_PLAYER_EYE = ['#FFF4D2', '#FFF4D2', '#1E1B1E'];

@@ -17,6 +17,7 @@ import {
   CONTROLS_HINT, CONTROLS_HINT_SIZE, CONTROLS_HINT_DURATION, CONTROLS_HINT_MARGIN,
   COLOR_PAPER, COLOR_INK, COLOR_PLAYER, COLOR_EYE, COLOR_MONSTER, COLOR_GROUND,
   COLOR_DEATH, PANEL_FLASH_COLOR,
+  WORLD_COUNT, WORLD_PLAYER_FILL, WORLD_PLAYER_EYE,
   AUDIO_ENABLED, AUDIO_MASTER_VOLUME,
   SFX_JUMP_VOLUME, SFX_JUMP_DURATION, SFX_JUMP_BASE_FREQ,
   SFX_SLASH_VOLUME, SFX_SLASH_DURATION, SFX_SLASH_BASE_FREQ,
@@ -45,6 +46,7 @@ let panelClearTimer = 0;      // >0 while "PANEL N CLEARED!" is shown
 let gameOver = false;         // run has ended: physics freezes, the panel keeps drawing
 let victory = false;          // all 8 panels cleared
 let paused = false;           // true while the run is paused (P or Escape)
+let world = 0;                // current world theme, chosen per run
 let jumpQueued = false;       // a Space / ArrowUp / KeyW press waiting for update() to spend on a jump
 let slashQueued = false;      // a '/' press waiting for update() to spend on a swing
 let runTime = 0;              // seconds of active run, drives the temporary controls hint
@@ -83,6 +85,7 @@ function reset() {
   gameOver = false;
   victory = false;
   paused = false;
+  world = Math.floor(Math.random() * WORLD_COUNT);
   jumpQueued = false;
   slashQueued = false;
   runTime = 0;
@@ -513,6 +516,35 @@ function drawMonsters() {
   }
 }
 
+function drawPlayerShape(w, h) {
+  if (world === 0) {
+    // Print Shop: The Missing Piece, a rounded wedge pointing forward.
+    roundedPath([
+      { x: -w / 2, y: -h },
+      { x: w / 2, y: -h / 2 },
+      { x: -w / 2, y: 0 },
+    ], Math.min(w, h) * SHAPE_ROUND);
+  } else if (world === 1) {
+    // Garden: a soft pink worm capsule.
+    roundedPath([
+      { x: -w * 0.45, y: -h },
+      { x: w * 0.45, y: -h },
+      { x: w * 0.45, y: 0 },
+      { x: -w * 0.45, y: 0 },
+    ], Math.min(w, h) * 0.45);
+  } else {
+    // Midnight: a crescent moon pointing forward.
+    const cy = -h / 2;
+    const r = h * 0.58;
+    const outerX = -w * 0.05;
+    const innerX = outerX + w * 0.28;
+    ctx.beginPath();
+    ctx.arc(outerX, cy, r, -Math.PI * 0.45, Math.PI * 0.45);
+    ctx.arc(innerX, cy, r * 0.78, Math.PI * 0.4, -Math.PI * 0.4, true);
+    ctx.closePath();
+  }
+}
+
 function drawPlayer() {
   const w = PLAYER_W;
   const h = PLAYER_H;
@@ -523,16 +555,15 @@ function drawPlayer() {
   ctx.lineWidth = OUTLINE_WIDTH;
   ctx.strokeStyle = COLOR_INK;
 
-  // The Missing Piece: a rounded wedge whose point is the direction of travel.
-  roundedPath([{ x: -w / 2, y: -h }, { x: w / 2, y: -h / 2 }, { x: -w / 2, y: 0 }], Math.min(w, h) * SHAPE_ROUND);
-  ctx.fillStyle = gameOver ? COLOR_DEATH : COLOR_PLAYER;
+  drawPlayerShape(w, h);
+  ctx.fillStyle = gameOver ? COLOR_DEATH : WORLD_PLAYER_FILL[world];
   ctx.fill();
   ctx.stroke();
 
-  // One big cream oval eye.
+  // One big oval eye in the world-specific eye colour.
   ctx.beginPath();
   ctx.ellipse(w * EYE_OFFSET_X, h * EYE_OFFSET_Y, w * EYE_RADIUS_X, h * EYE_RADIUS_Y, 0, 0, Math.PI * 2);
-  ctx.fillStyle = COLOR_EYE;
+  ctx.fillStyle = WORLD_PLAYER_EYE[world];
   ctx.fill();
   ctx.stroke();
   ctx.restore();
