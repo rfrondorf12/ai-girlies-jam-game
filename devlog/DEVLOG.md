@@ -32,6 +32,12 @@ Format for each playtest (after M2 and after M3):
 - **Saw:** Double jump works well. The second jump went twice as high as the first. Space, Up, and W all jump.
 - **Decided, and why (RF):** Double jump makes the game more interactive and can help dodge monsters.
 
+### 14:05: Ka Blam font
+- **Changed:** Added HTML/CSS for the Ka Blam font (dafont.com/ka-blam, by imagex) to fix illegible text. License on the site: free for personal use; commercial use needs contact at contact@imagex-fonts.com.
+- **Expected:** Font outlined and legible.
+- **Saw:** Black fill, and we can't read it.
+- **Decided, and why (KR):** Fits our retro game vibe.
+
 ## Reflection
 
 *At the end: What did you decide that Claude didn't? What did you reject from Claude, and why? What would you do with another jam session?*
