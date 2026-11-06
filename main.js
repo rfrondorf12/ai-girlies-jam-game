@@ -1,7 +1,8 @@
 // M2 loop: 8-panel comic runner with spawning monsters, stomp, slash, score, and instant restart.
 import {
   PLAYFIELD_W, PLAYFIELD_H, PANEL_MARGIN, GROUND_Y, GROUND_THICKNESS, OUTLINE_WIDTH, MAX_DT,
-  GRAVITY, MAX_FALL_SPEED, JUMP_VELOCITY, MOVE_SPEED, PLAYER_W, PLAYER_H, PLAYER_START_X,
+  GRAVITY, MAX_FALL_SPEED, JUMP_VELOCITY, MAX_JUMPS, DOUBLE_JUMP_VELOCITY,
+  MOVE_SPEED, PLAYER_W, PLAYER_H, PLAYER_START_X,
   SHAPE_ROUND, EYE_OFFSET_X, EYE_OFFSET_Y, EYE_RADIUS_X, EYE_RADIUS_Y,
   SLASH_DURATION, SLASH_REACH, SLASH_THICKNESS, SLASH_ARC_SPREAD, SLASH_SAMPLES, SHOULDER_HEIGHT,
   MONSTER_W, MONSTER_H, MONSTER_SPEED, BASE_MONSTERS_PER_PANEL, SPAWN_INTERVAL, SPAWN_PANEL_MULTIPLIER,
@@ -23,7 +24,7 @@ const ctx = canvas.getContext('2d');
 // ---------------------------------------------------------------------------
 
 // player.y is the bottom of the hero (its feet), not its top.
-const player = { x: 0, y: 0, vx: 0, vy: 0, facing: 1, grounded: false, slashTimer: 0 };
+const player = { x: 0, y: 0, vx: 0, vy: 0, facing: 1, grounded: false, slashTimer: 0, jumpsUsed: 0 };
 const monsters = [];
 
 let panel = 1;                // current comic panel, 1 through 8
@@ -33,7 +34,7 @@ let score = 0;                // run score
 let panelClearTimer = 0;      // >0 while "PANEL N CLEARED!" is shown
 let gameOver = false;         // run has ended: physics freezes, the panel keeps drawing
 let victory = false;          // all 8 panels cleared
-let jumpQueued = false;       // a Space press waiting for update() to spend on a jump
+let jumpQueued = false;       // a Space / ArrowUp / KeyW press waiting for update() to spend on a jump
 let slashQueued = false;      // a '/' press waiting for update() to spend on a swing
 
 function monstersPerPanel(p) {
@@ -59,6 +60,7 @@ function reset() {
   player.facing = 1;
   player.grounded = true;
   player.slashTimer = 0;
+  player.jumpsUsed = 0;
   monsters.length = 0;
   panel = 1;
   spawnedThisPanel = 0;
@@ -77,14 +79,15 @@ reset();
 // ---------------------------------------------------------------------------
 
 const held = new Set();
-const BLOCKED = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'Slash']);
+const JUMP_KEYS = new Set(['Space', 'ArrowUp', 'KeyW']);
+const BLOCKED = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'Slash', 'KeyW']);
 
 addEventListener('keydown', (e) => {
   if (BLOCKED.has(e.code)) e.preventDefault();
   held.add(e.code);
   if (e.repeat) return;
-  // Space jumps while running, and retries once the run is over.
-  if (e.code === 'Space') {
+  // Space, Up arrow and W all jump while running, and retry once the run is over.
+  if (JUMP_KEYS.has(e.code)) {
     if (gameOver || victory) reset();
     else jumpQueued = true;
   }
@@ -176,9 +179,11 @@ function update(dt) {
   player.x = Math.min(PLAYFIELD_W - halfW, Math.max(halfW, player.x));
 
   // --- jump ---
-  if (jumpQueued && player.grounded) {
-    player.vy = JUMP_VELOCITY;
+  // The first jump uses JUMP_VELOCITY; the second, mid-air tap is weaker.
+  if (jumpQueued && player.jumpsUsed < MAX_JUMPS) {
+    player.vy = player.jumpsUsed === 0 ? JUMP_VELOCITY : DOUBLE_JUMP_VELOCITY;
     player.grounded = false;
+    player.jumpsUsed++;
   }
   jumpQueued = false;
 
@@ -210,6 +215,7 @@ function update(dt) {
       player.y = mTop;
       player.vy = STOMP_BOUNCE_VELOCITY;
       player.grounded = true;
+      player.jumpsUsed = 0;
       killMonster(m);
       break;
     }
@@ -220,6 +226,7 @@ function update(dt) {
     player.y = GROUND_Y;
     player.vy = 0;
     player.grounded = true;
+    player.jumpsUsed = 0;
   }
 
   // --- side contact / overlap ---
