@@ -63,7 +63,7 @@ export const GAME_OVER_BANNER_Y = 230;             // banner centre y in playfie
 export const GAME_OVER_FONT_SIZE = 72;             // banner text size in playfield units
 export const GAME_OVER_HINT_SIZE = 24;             // restart hint text size in playfield units
 export const GAME_OVER_HINT_GAP = 58;              // vertical gap between banner centre and hint centre
-export const FONT_STACK = 'system-ui, sans-serif'; // canvas font stack for panel text
+export const FONT_STACK = '"Ka Blam", monospace'; // canvas font stack for panel text
 
 // --- Controls hint (temporary, bottom-left of the panel) ---
 export const CONTROLS_HINT = '← → MOVE   SPACE/UP/W JUMP   / SLASH'; // temporary controls line
