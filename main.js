@@ -18,6 +18,7 @@ import {
   COLOR_PAPER, COLOR_INK, COLOR_PLAYER, COLOR_EYE, COLOR_MONSTER, COLOR_GROUND,
   COLOR_DEATH, PANEL_FLASH_COLOR,
   AUDIO_ENABLED, AUDIO_MASTER_VOLUME,
+  SFX_JUMP_VOLUME, SFX_JUMP_DURATION, SFX_JUMP_BASE_FREQ,
   SFX_SLASH_VOLUME, SFX_SLASH_DURATION, SFX_SLASH_BASE_FREQ,
   SFX_STOMP_VOLUME, SFX_STOMP_DURATION, SFX_STOMP_BASE_FREQ,
   SFX_HIT_VOLUME, SFX_HIT_DURATION, SFX_HIT_BASE_FREQ,
@@ -168,6 +169,15 @@ function tone(volume, duration, type, freqStart, freqEnd, delay = 0) {
 // Guard: silent until the context exists and has been unlocked by a keypress.
 function audioReady() {
   return AUDIO_ENABLED && audioCtx !== null && audioCtx.state !== 'closed';
+}
+
+// Springing off the page: a quick rising-falling "boing" tone.
+function playJump() {
+  if (!audioReady()) return;
+  tone(SFX_JUMP_VOLUME, SFX_JUMP_DURATION, 'triangle',
+    SFX_JUMP_BASE_FREQ * 1.6, SFX_JUMP_BASE_FREQ * 0.55);
+  tone(SFX_JUMP_VOLUME * 0.4, SFX_JUMP_DURATION * 0.8, 'sine',
+    SFX_JUMP_BASE_FREQ * 1.2, SFX_JUMP_BASE_FREQ * 0.5, 0.02);
 }
 
 // Swinging the sword: a fast airy swoosh, with a falling blade tone under it.
@@ -330,6 +340,7 @@ function update(dt) {
     player.vy = player.jumpsUsed === 0 ? JUMP_VELOCITY : DOUBLE_JUMP_VELOCITY;
     player.grounded = false;
     player.jumpsUsed++;
+    playJump();
   }
   jumpQueued = false;
 
@@ -565,7 +576,7 @@ function drawPanelCounter() {
   ctx.font = `${PANEL_COUNTER_FONT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   ctx.strokeStyle = COLOR_INK;
-  const text = `PANEL ${panel}/8`;
+  const text = `PANEL ${panel} OF 8`;
   const x = PLAYFIELD_W - PANEL_MARGIN - 12;
   const y = PANEL_MARGIN + 10;
   ctx.strokeText(text, x, y);

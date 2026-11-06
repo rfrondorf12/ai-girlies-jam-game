@@ -54,13 +54,13 @@ export const PANEL_COUNTER_FONT_SIZE = 20; // panel X/8 counter text size
 export const PANEL_CLEAR_FONT_SIZE = 56;   // "PANEL N CLEARED!" text size
 export const VICTORY_FONT_SIZE = 72;   // victory banner text size
 export const VICTORY_TEXT = 'VICTORY!'; // banner shown after clearing panel 8
-export const VICTORY_HINT_LINE1 = 'R / SPACE'; // first line of prompt under victory banner
+export const VICTORY_HINT_LINE1 = 'R OR SPACE'; // first line of prompt under victory banner
 export const VICTORY_HINT_LINE2 = 'to play again'; // second line of prompt under victory banner
 export const PANEL_FLASH_COLOR = '#FFF4D2'; // bright ink flash behind the panel during a clear
 
 // --- Game over ---
 export const GAME_OVER_TEXT = 'GAME OVER!';        // banner shown when a run ends
-export const RESTART_HINT_LINE1 = 'R / SPACE';     // first line of the retry prompt
+export const RESTART_HINT_LINE1 = 'R OR SPACE';     // first line of the retry prompt
 export const RESTART_HINT_LINE2 = 'to retry';      // second line of the retry prompt
 export const GAME_OVER_BANNER_Y = 230;             // banner centre y in playfield units
 export const GAME_OVER_FONT_SIZE = 72;             // banner text size in playfield units
@@ -74,7 +74,7 @@ export const PAUSED_HINT = 'P to resume';          // prompt under pause banner
 export const PAUSED_FONT_SIZE = 64;                // pause banner text size in playfield units
 
 // --- Controls hint (temporary, bottom-left of the panel) ---
-export const CONTROLS_HINT = '← → MOVE   SPACE/UP/W JUMP   / SLASH'; // temporary controls line
+export const CONTROLS_HINT = 'ARROWS MOVE   SPACE OR UP OR W JUMP   SLASH ATTACK   P PAUSE'; // temporary controls line
 export const CONTROLS_HINT_SIZE = 16;   // hint text size in playfield units
 export const CONTROLS_HINT_DURATION = 8; // seconds the hint stays if the player never slashes
 export const CONTROLS_HINT_MARGIN = 14; // gap between the hint and the panel edge
@@ -84,6 +84,10 @@ export const CONTROLS_HINT_MARGIN = 14; // gap between the hint and the panel ed
 // the swing's on-screen life; SFX_SLASH_DURATION is how long the swoosh rings).
 export const AUDIO_ENABLED = true;      // master switch: false silences every sound
 export const AUDIO_MASTER_VOLUME = 0.5; // single master gain in front of all sounds, for overall loudness
+
+export const SFX_JUMP_VOLUME = 0.35;      // loudness of the jump boing
+export const SFX_JUMP_DURATION = 0.14;    // length of the jump boing in seconds
+export const SFX_JUMP_BASE_FREQ = 320;    // Hz root of the springy jump tone
 
 export const SFX_SLASH_VOLUME = 0.35;     // loudness of the sword swoosh
 export const SFX_SLASH_DURATION = 0.16;   // length of the swoosh in seconds
