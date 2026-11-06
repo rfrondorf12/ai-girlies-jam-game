@@ -1,4 +1,4 @@
-// M2 loop: 8-panel comic runner with spawning monsters, stomp, slash, score, and instant restart.
+// M3 feel: 8-panel comic runner with spawning monsters, stomp, slash, score, instant restart, and procedural Web Audio SFX.
 import {
   PLAYFIELD_W, PLAYFIELD_H, PANEL_MARGIN, GROUND_Y, GROUND_THICKNESS, OUTLINE_WIDTH, MAX_DT,
   GRAVITY, MAX_FALL_SPEED, JUMP_VELOCITY, MAX_JUMPS, DOUBLE_JUMP_VELOCITY,
@@ -15,6 +15,12 @@ import {
   CONTROLS_HINT, CONTROLS_HINT_SIZE, CONTROLS_HINT_DURATION, CONTROLS_HINT_MARGIN,
   COLOR_PAPER, COLOR_INK, COLOR_PLAYER, COLOR_EYE, COLOR_MONSTER, COLOR_GROUND,
   COLOR_DEATH, PANEL_FLASH_COLOR,
+  AUDIO_ENABLED, AUDIO_MASTER_VOLUME,
+  SFX_SLASH_VOLUME, SFX_SLASH_DURATION, SFX_SLASH_BASE_FREQ,
+  SFX_STOMP_VOLUME, SFX_STOMP_DURATION, SFX_STOMP_BASE_FREQ,
+  SFX_HIT_VOLUME, SFX_HIT_DURATION, SFX_HIT_BASE_FREQ,
+  SFX_VICTORY_VOLUME, SFX_VICTORY_DURATION, SFX_VICTORY_BASE_FREQ, SFX_VICTORY_STEPS,
+  SFX_GAMEOVER_VOLUME, SFX_GAMEOVER_DURATION, SFX_GAMEOVER_BASE_FREQ,
 } from './tuning.js';
 
 const canvas = document.getElementById('game');
@@ -80,6 +86,129 @@ function reset() {
 reset();
 
 // ---------------------------------------------------------------------------
+// Audio: every sound is synthesized on the fly, no audio files
+// ---------------------------------------------------------------------------
+
+// One shared context for the whole page. Browsers block audio until the player
+// interacts, so this is created (and resumed) from the first keydown.
+let audioCtx = null;
+let masterGain = null;
+let noiseBuffer = null;
+let audioTried = false;
+
+function initAudio() {
+  if (!AUDIO_ENABLED || audioTried) {
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    return;
+  }
+  const Ctor = window.AudioContext || window.webkitAudioContext;
+  if (!Ctor) {
+    audioTried = true; // no Web Audio here: stop trying, the game still runs
+    return;
+  }
+  audioCtx = new Ctor();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = AUDIO_MASTER_VOLUME;
+  masterGain.connect(audioCtx.destination);
+  noiseBuffer = makeNoiseBuffer(0.5);
+  audioTried = true;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+// Half a second of white noise, reused as the source for every noisy sound.
+function makeNoiseBuffer(seconds) {
+  const length = Math.max(1, Math.floor(audioCtx.sampleRate * seconds));
+  const buffer = audioCtx.createBuffer(1, length, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+  return buffer;
+}
+
+// A filtered noise burst: the air of the swoosh, the grit of the stomp, the click of the hit.
+function noiseBurst(volume, duration, filterType, freqStart, freqEnd, q) {
+  const src = audioCtx.createBufferSource();
+  src.buffer = noiseBuffer;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = filterType;
+  filter.Q.value = q;
+  const t = audioCtx.currentTime;
+  filter.frequency.setValueAtTime(freqStart, t);
+  filter.frequency.exponentialRampToValueAtTime(Math.max(40, freqEnd), t + duration);
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(volume, t);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+  src.connect(filter);
+  filter.connect(gain);
+  gain.connect(masterGain);
+  src.start(t);
+  src.stop(t + duration + 0.02);
+}
+
+// One oscillator with a pitch sweep and a percussive attack/decay envelope.
+function tone(volume, duration, type, freqStart, freqEnd, delay = 0) {
+  const osc = audioCtx.createOscillator();
+  osc.type = type;
+  const t = audioCtx.currentTime + delay;
+  osc.frequency.setValueAtTime(freqStart, t);
+  if (freqEnd !== freqStart) osc.frequency.exponentialRampToValueAtTime(Math.max(20, freqEnd), t + duration);
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, volume), t + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+  osc.connect(gain);
+  gain.connect(masterGain);
+  osc.start(t);
+  osc.stop(t + duration + 0.02);
+}
+
+// Guard: silent until the context exists and has been unlocked by a keypress.
+function audioReady() {
+  return AUDIO_ENABLED && audioCtx !== null && audioCtx.state !== 'closed';
+}
+
+// Swinging the sword: a fast airy swoosh, with a falling blade tone under it.
+function playSlash() {
+  if (!audioReady()) return;
+  noiseBurst(SFX_SLASH_VOLUME, SFX_SLASH_DURATION, 'bandpass',
+    SFX_SLASH_BASE_FREQ, SFX_SLASH_BASE_FREQ * 0.18, 1.1);
+  tone(SFX_SLASH_VOLUME * 0.5, SFX_SLASH_DURATION, 'triangle',
+    SFX_SLASH_BASE_FREQ * 0.6, SFX_SLASH_BASE_FREQ * 0.15);
+}
+
+// Landing on a monster's head: a low body thump with a short noise slap on top.
+function playStomp() {
+  if (!audioReady()) return;
+  tone(SFX_STOMP_VOLUME, SFX_STOMP_DURATION, 'sine', SFX_STOMP_BASE_FREQ, SFX_STOMP_BASE_FREQ * 0.28);
+  noiseBurst(SFX_STOMP_VOLUME * 0.5, SFX_STOMP_DURATION * 0.5, 'lowpass',
+    SFX_STOMP_BASE_FREQ * 6, SFX_STOMP_BASE_FREQ * 2, 0.7);
+}
+
+// A slash connecting: a sharp ping, layered over the swoosh.
+function playHit() {
+  if (!audioReady()) return;
+  tone(SFX_HIT_VOLUME, SFX_HIT_DURATION, 'square', SFX_HIT_BASE_FREQ, SFX_HIT_BASE_FREQ * 0.3);
+  noiseBurst(SFX_HIT_VOLUME * 0.4, SFX_HIT_DURATION * 0.4, 'highpass',
+    SFX_HIT_BASE_FREQ * 2, SFX_HIT_BASE_FREQ * 1.5, 0.8);
+}
+
+// Panel 8 cleared: a four-note rising jingle.
+function playVictory() {
+  if (!audioReady()) return;
+  const note = SFX_VICTORY_DURATION / SFX_VICTORY_STEPS.length;
+  SFX_VICTORY_STEPS.forEach((ratio, i) => {
+    tone(SFX_VICTORY_VOLUME, note * 1.6, 'triangle',
+      SFX_VICTORY_BASE_FREQ * ratio, SFX_VICTORY_BASE_FREQ * ratio, i * note);
+  });
+}
+
+// The run ends: one long tone sliding down, so failure reads instantly.
+function playGameOver() {
+  if (!audioReady()) return;
+  tone(SFX_GAMEOVER_VOLUME, SFX_GAMEOVER_DURATION, 'square',
+    SFX_GAMEOVER_BASE_FREQ, SFX_GAMEOVER_BASE_FREQ * 0.35);
+}
+
+// ---------------------------------------------------------------------------
 // Input: held keys for movement, single presses for jump and slash
 // ---------------------------------------------------------------------------
 
@@ -89,6 +218,7 @@ const BLOCKED = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Spa
 
 addEventListener('keydown', (e) => {
   if (BLOCKED.has(e.code)) e.preventDefault();
+  initAudio(); // first keypress is what lets the browser play sound
   held.add(e.code);
   if (e.repeat) return;
   // Space, Up arrow and W all jump while running, and retry once the run is over.
@@ -154,6 +284,7 @@ function advancePanel() {
   score += PANEL_CLEAR_SCORE;
   if (panel >= 8) {
     victory = true;
+    playVictory();
     return;
   }
   panel++;
@@ -225,6 +356,7 @@ function update(dt) {
       player.grounded = true;
       player.jumpsUsed = 0;
       killMonster(m);
+      playStomp();
       break;
     }
   }
@@ -254,6 +386,7 @@ function update(dt) {
       player.vx = 0;
       player.vy = 0;
       gameOver = true;
+      playGameOver();
       return;
     }
   }
@@ -263,12 +396,18 @@ function update(dt) {
     player.slashTimer = SLASH_DURATION;
     slashQueued = false;
     hasSlashed = true;
+    playSlash();
   }
   if (player.slashTimer > 0) {
     player.slashTimer = Math.max(0, player.slashTimer - dt);
+    let connected = false;
     for (const m of monsters) {
-      if (!m.dead && slashHitsMonster(m)) killMonster(m);
+      if (!m.dead && slashHitsMonster(m)) {
+        killMonster(m);
+        connected = true;
+      }
     }
+    if (connected) playHit();
   }
 
   // --- panel clear ---
@@ -407,7 +546,7 @@ function drawScore() {
   const x = PANEL_MARGIN + 12;
   const y = PANEL_MARGIN + 8;
   ctx.strokeText(text, x, y);
-  ctx.fillStyle = COLOR_INK;
+  ctx.fillStyle = 'transparent';
   ctx.fillText(text, x, y);
   ctx.restore();
 }
@@ -423,7 +562,7 @@ function drawPanelCounter() {
   const x = PLAYFIELD_W - PANEL_MARGIN - 12;
   const y = PANEL_MARGIN + 10;
   ctx.strokeText(text, x, y);
-  ctx.fillStyle = COLOR_INK;
+  ctx.fillStyle = 'transparent';
   ctx.fillText(text, x, y);
   ctx.restore();
 }
@@ -442,7 +581,7 @@ function drawControlsHint() {
   const x = PANEL_MARGIN + CONTROLS_HINT_MARGIN;
   const y = PLAYFIELD_H - PANEL_MARGIN - CONTROLS_HINT_MARGIN;
   ctx.strokeText(CONTROLS_HINT, x, y);
-  ctx.fillStyle = COLOR_INK;
+  ctx.fillStyle = 'transparent';
   ctx.fillText(CONTROLS_HINT, x, y);
   ctx.restore();
 }
@@ -460,7 +599,7 @@ function drawPanelClear() {
   ctx.lineWidth = OUTLINE_WIDTH * 2.5;
   const text = `PANEL ${panel} CLEARED!`;
   ctx.strokeText(text, cx, cy);
-  ctx.fillStyle = COLOR_EYE;
+  ctx.fillStyle = 'transparent';
   ctx.fillText(text, cx, cy);
   ctx.restore();
 }
@@ -478,14 +617,14 @@ function drawGameOver() {
   ctx.font = `${GAME_OVER_FONT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = OUTLINE_WIDTH * 3;
   ctx.strokeText(GAME_OVER_TEXT, cx, GAME_OVER_BANNER_Y);
-  ctx.fillStyle = COLOR_DEATH;
+  ctx.fillStyle = 'transparent';
   ctx.fillText(GAME_OVER_TEXT, cx, GAME_OVER_BANNER_Y);
 
   ctx.font = `${GAME_OVER_HINT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = OUTLINE_WIDTH * 1.5;
   const hintY = GAME_OVER_BANNER_Y + GAME_OVER_HINT_GAP;
   ctx.strokeText(RESTART_HINT, cx, hintY);
-  ctx.fillStyle = COLOR_INK;
+  ctx.fillStyle = 'transparent';
   ctx.fillText(RESTART_HINT, cx, hintY);
   ctx.restore();
 }
@@ -502,7 +641,7 @@ function drawVictory() {
   ctx.font = `${VICTORY_FONT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = OUTLINE_WIDTH * 3;
   ctx.strokeText(VICTORY_TEXT, cx, GAME_OVER_BANNER_Y);
-  ctx.fillStyle = COLOR_PLAYER;
+  ctx.fillStyle = 'transparent';
   ctx.fillText(VICTORY_TEXT, cx, GAME_OVER_BANNER_Y);
 
   ctx.font = `${GAME_OVER_HINT_SIZE}px ${FONT_STACK}`;
@@ -510,12 +649,12 @@ function drawVictory() {
   const scoreY = GAME_OVER_BANNER_Y + GAME_OVER_HINT_GAP;
   const scoreText = `FINAL SCORE: ${score}`;
   ctx.strokeText(scoreText, cx, scoreY);
-  ctx.fillStyle = COLOR_INK;
+  ctx.fillStyle = 'transparent';
   ctx.fillText(scoreText, cx, scoreY);
 
   const hintY = scoreY + GAME_OVER_HINT_GAP;
   ctx.strokeText(VICTORY_HINT, cx, hintY);
-  ctx.fillStyle = COLOR_INK;
+  ctx.fillStyle = 'transparent';
   ctx.fillText(VICTORY_HINT, cx, hintY);
   ctx.restore();
 }

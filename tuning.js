@@ -71,6 +71,33 @@ export const CONTROLS_HINT_SIZE = 16;   // hint text size in playfield units
 export const CONTROLS_HINT_DURATION = 8; // seconds the hint stays if the player never slashes
 export const CONTROLS_HINT_MARGIN = 14; // gap between the hint and the panel edge
 
+// --- Audio (procedural Web Audio SFX, no external sound files) ---
+// The SFX_ prefix keeps these clear of the visual knobs above (SLASH_DURATION is
+// the swing's on-screen life; SFX_SLASH_DURATION is how long the swoosh rings).
+export const AUDIO_ENABLED = true;      // master switch: false silences every sound
+export const AUDIO_MASTER_VOLUME = 0.5; // single master gain in front of all sounds, for overall loudness
+
+export const SFX_SLASH_VOLUME = 0.35;     // loudness of the sword swoosh
+export const SFX_SLASH_DURATION = 0.16;   // length of the swoosh in seconds
+export const SFX_SLASH_BASE_FREQ = 1800; // Hz the swoosh's noise sweep starts at, falling from there
+
+export const SFX_STOMP_VOLUME = 0.5;     // loudness of the stomp thud
+export const SFX_STOMP_DURATION = 0.14;  // length of the thud in seconds
+export const SFX_STOMP_BASE_FREQ = 180;  // Hz the thud's body tone starts at, dropping for the impact
+
+export const SFX_HIT_VOLUME = 0.4;       // loudness of the slash-kill ping
+export const SFX_HIT_DURATION = 0.14;    // length of the ping in seconds
+export const SFX_HIT_BASE_FREQ = 880;    // Hz the ping's square tone starts at
+
+export const SFX_VICTORY_VOLUME = 0.45;    // loudness of the clearing jingle
+export const SFX_VICTORY_DURATION = 0.6;   // total length of the jingle in seconds
+export const SFX_VICTORY_BASE_FREQ = 523.25; // Hz of the jingle's root note (C5)
+export const SFX_VICTORY_STEPS = [1, 1.25, 1.5, 2]; // pitch ratios of the four ascending notes, relative to the root
+
+export const SFX_GAMEOVER_VOLUME = 0.4;      // loudness of the run-over tone
+export const SFX_GAMEOVER_DURATION = 0.6;    // length of the descending tone in seconds
+export const SFX_GAMEOVER_BASE_FREQ = 440;   // Hz the game-over tone starts at, sliding down from there
+
 // --- Colours ---
 export const COLOR_DEATH = '#C4342A';       // hero's body and banner ink once the run has ended
 export const COLOR_PAPER = '#F4EBD9';       // warm newsprint page
