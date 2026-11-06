@@ -54,17 +54,24 @@ export const PANEL_COUNTER_FONT_SIZE = 20; // panel X/8 counter text size
 export const PANEL_CLEAR_FONT_SIZE = 56;   // "PANEL N CLEARED!" text size
 export const VICTORY_FONT_SIZE = 72;   // victory banner text size
 export const VICTORY_TEXT = 'VICTORY!'; // banner shown after clearing panel 8
-export const VICTORY_HINT = 'R / SPACE to play again'; // prompt under victory banner
+export const VICTORY_HINT_LINE1 = 'R / SPACE'; // first line of prompt under victory banner
+export const VICTORY_HINT_LINE2 = 'to play again'; // second line of prompt under victory banner
 export const PANEL_FLASH_COLOR = '#FFF4D2'; // bright ink flash behind the panel during a clear
 
 // --- Game over ---
 export const GAME_OVER_TEXT = 'GAME OVER!';        // banner shown when a run ends
-export const RESTART_HINT = 'R / SPACE to retry';  // prompt printed under the banner
+export const RESTART_HINT_LINE1 = 'R / SPACE';     // first line of the retry prompt
+export const RESTART_HINT_LINE2 = 'to retry';      // second line of the retry prompt
 export const GAME_OVER_BANNER_Y = 230;             // banner centre y in playfield units
 export const GAME_OVER_FONT_SIZE = 72;             // banner text size in playfield units
 export const GAME_OVER_HINT_SIZE = 24;             // restart hint text size in playfield units
 export const GAME_OVER_HINT_GAP = 58;              // vertical gap between banner centre and hint centre
 export const FONT_STACK = '"Ka Blam", monospace'; // canvas font stack for panel text
+
+// --- Pause ---
+export const PAUSED_TEXT = 'PAUSED';               // pause overlay banner
+export const PAUSED_HINT = 'P to resume';          // prompt under pause banner
+export const PAUSED_FONT_SIZE = 64;                // pause banner text size in playfield units
 
 // --- Controls hint (temporary, bottom-left of the panel) ---
 export const CONTROLS_HINT = '← → MOVE   SPACE/UP/W JUMP   / SLASH'; // temporary controls line

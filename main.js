@@ -9,9 +9,11 @@ import {
   HIT_FLASH, STOMP_SQUASH, STOMP_BOUNCE_VELOCITY,
   PANEL_CLEAR_DELAY, PANEL_CLEAR_SCORE, MONSTER_KILL_SCORE,
   SCORE_FONT_SIZE, PANEL_COUNTER_FONT_SIZE, PANEL_CLEAR_FONT_SIZE,
-  VICTORY_FONT_SIZE, VICTORY_TEXT, VICTORY_HINT,
-  GAME_OVER_TEXT, RESTART_HINT, GAME_OVER_BANNER_Y, GAME_OVER_FONT_SIZE, GAME_OVER_HINT_SIZE,
+  VICTORY_FONT_SIZE, VICTORY_TEXT,
+  GAME_OVER_TEXT, RESTART_HINT_LINE1, RESTART_HINT_LINE2, GAME_OVER_BANNER_Y, GAME_OVER_FONT_SIZE, GAME_OVER_HINT_SIZE,
   GAME_OVER_HINT_GAP, FONT_STACK,
+  VICTORY_HINT_LINE1, VICTORY_HINT_LINE2,
+  PAUSED_TEXT, PAUSED_HINT, PAUSED_FONT_SIZE,
   CONTROLS_HINT, CONTROLS_HINT_SIZE, CONTROLS_HINT_DURATION, CONTROLS_HINT_MARGIN,
   COLOR_PAPER, COLOR_INK, COLOR_PLAYER, COLOR_EYE, COLOR_MONSTER, COLOR_GROUND,
   COLOR_DEATH, PANEL_FLASH_COLOR,
@@ -41,6 +43,7 @@ let score = 0;                // run score
 let panelClearTimer = 0;      // >0 while "PANEL N CLEARED!" is shown
 let gameOver = false;         // run has ended: physics freezes, the panel keeps drawing
 let victory = false;          // all 8 panels cleared
+let paused = false;           // true while the run is paused (P or Escape)
 let jumpQueued = false;       // a Space / ArrowUp / KeyW press waiting for update() to spend on a jump
 let slashQueued = false;      // a '/' press waiting for update() to spend on a swing
 let runTime = 0;              // seconds of active run, drives the temporary controls hint
@@ -78,6 +81,7 @@ function reset() {
   panelClearTimer = 0;
   gameOver = false;
   victory = false;
+  paused = false;
   jumpQueued = false;
   slashQueued = false;
   runTime = 0;
@@ -228,6 +232,9 @@ addEventListener('keydown', (e) => {
   }
   if (e.code === 'Slash' || e.key === '/') slashQueued = true;
   if (e.code === 'KeyR') reset();
+  if ((e.code === 'KeyP' || e.code === 'Escape') && !gameOver && !victory && panelClearTimer <= 0) {
+    paused = !paused;
+  }
 });
 addEventListener('keyup', (e) => held.delete(e.code));
 addEventListener('blur', () => held.clear());
@@ -294,8 +301,8 @@ function advancePanel() {
 }
 
 function update(dt) {
-  // The run has ended or a panel is being celebrated: hold physics still.
-  if (gameOver || victory) return;
+  // The run has ended, is paused, or a panel is being celebrated: hold physics still.
+  if (gameOver || victory || paused) return;
 
   if (panelClearTimer > 0) {
     panelClearTimer = Math.max(0, panelClearTimer - dt);
@@ -622,10 +629,13 @@ function drawGameOver() {
 
   ctx.font = `${GAME_OVER_HINT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = TEXT_OUTLINE_WIDTH;
-  const hintY = GAME_OVER_BANNER_Y + GAME_OVER_HINT_GAP;
-  ctx.strokeText(RESTART_HINT, cx, hintY);
+  const hintY1 = GAME_OVER_BANNER_Y + GAME_OVER_HINT_GAP;
+  ctx.strokeText(RESTART_HINT_LINE1, cx, hintY1);
   ctx.fillStyle = COLOR_PAPER;
-  ctx.fillText(RESTART_HINT, cx, hintY);
+  ctx.fillText(RESTART_HINT_LINE1, cx, hintY1);
+  const hintY2 = hintY1 + GAME_OVER_HINT_SIZE + 8;
+  ctx.strokeText(RESTART_HINT_LINE2, cx, hintY2);
+  ctx.fillText(RESTART_HINT_LINE2, cx, hintY2);
   ctx.restore();
 }
 
@@ -652,10 +662,36 @@ function drawVictory() {
   ctx.fillStyle = COLOR_PAPER;
   ctx.fillText(scoreText, cx, scoreY);
 
-  const hintY = scoreY + GAME_OVER_HINT_GAP;
-  ctx.strokeText(VICTORY_HINT, cx, hintY);
+  const hintY1 = scoreY + GAME_OVER_HINT_GAP;
+  ctx.strokeText(VICTORY_HINT_LINE1, cx, hintY1);
   ctx.fillStyle = COLOR_PAPER;
-  ctx.fillText(VICTORY_HINT, cx, hintY);
+  ctx.fillText(VICTORY_HINT_LINE1, cx, hintY1);
+  const hintY2 = hintY1 + GAME_OVER_HINT_SIZE + 8;
+  ctx.strokeText(VICTORY_HINT_LINE2, cx, hintY2);
+  ctx.fillText(VICTORY_HINT_LINE2, cx, hintY2);
+  ctx.restore();
+}
+
+function drawPaused() {
+  if (!paused) return;
+  const cx = PLAYFIELD_W / 2;
+  const cy = PLAYFIELD_H / 2;
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = COLOR_INK;
+
+  ctx.font = `${PAUSED_FONT_SIZE}px ${FONT_STACK}`;
+  ctx.lineWidth = TEXT_OUTLINE_WIDTH;
+  ctx.strokeText(PAUSED_TEXT, cx, cy);
+  ctx.fillStyle = COLOR_PAPER;
+  ctx.fillText(PAUSED_TEXT, cx, cy);
+
+  ctx.font = `${GAME_OVER_HINT_SIZE}px ${FONT_STACK}`;
+  const hintY = cy + PAUSED_FONT_SIZE * 0.7;
+  ctx.strokeText(PAUSED_HINT, cx, hintY);
+  ctx.fillText(PAUSED_HINT, cx, hintY);
   ctx.restore();
 }
 
@@ -675,6 +711,7 @@ function draw() {
   drawPanelClear();
   drawGameOver();
   drawVictory();
+  drawPaused();
 }
 
 // ---------------------------------------------------------------------------
