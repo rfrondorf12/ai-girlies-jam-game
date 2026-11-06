@@ -4,7 +4,9 @@ import {
   GRAVITY, MAX_FALL_SPEED, JUMP_VELOCITY, MAX_JUMPS, DOUBLE_JUMP_VELOCITY,
   MOVE_SPEED, PLAYER_W, PLAYER_H, PLAYER_START_X,
   SLASH_DURATION, SLASH_REACH, SLASH_THICKNESS, SLASH_ARC_SPREAD, SLASH_SAMPLES, SHOULDER_HEIGHT,
-  MONSTER_W, MONSTER_H, MONSTER_SPEED, BASE_MONSTERS_PER_PANEL, SPAWN_INTERVAL, SPAWN_PANEL_MULTIPLIER,
+  MONSTER_SPEED, MONSTER_SPEED_PANEL_RAMP, MONSTER_TYPES, MONSTER_FLY_Y, MONSTER_FLY_BOB, MONSTER_FLY_BOB_SPEED,
+  MONSTER_HALFTONE_OPACITY, MONSTER_SNIP_SPEED, MONSTER_WING_SPEED, MONSTER_WORM_WAVE_SPEED, MONSTER_SPIN_SPEED,
+  BASE_MONSTERS_PER_PANEL, SPAWN_INTERVAL, SPAWN_PANEL_MULTIPLIER,
   HIT_FLASH, STOMP_SQUASH, STOMP_BOUNCE_VELOCITY,
   PANEL_CLEAR_DELAY, PANEL_CLEAR_SCORE, MONSTER_KILL_SCORE,
   SCORE_FONT_SIZE, PANEL_COUNTER_FONT_SIZE, PANEL_CLEAR_FONT_SIZE,
@@ -14,7 +16,7 @@ import {
   VICTORY_HINT_LINE1, VICTORY_HINT_LINE2,
   PAUSED_TEXT, PAUSED_HINT, PAUSED_FONT_SIZE,
   CONTROLS_HINT, CONTROLS_HINT_SIZE, CONTROLS_HINT_DURATION, CONTROLS_HINT_MARGIN,
-  COLOR_PAPER, COLOR_INK, COLOR_EYE, COLOR_MONSTER,
+  COLOR_PAPER, COLOR_INK, COLOR_EYE, MONSTER_COLORS,
   COLOR_DEATH, PANEL_FLASH_COLOR,
   WORLD_COUNT, WORLD_PAPER, WORLD_PLAYER_FILL, WORLD_PLAYER_EYE,
   HALFTONE_OPACITY, STAGES_PER_PANEL,
@@ -100,12 +102,36 @@ function monstersPerPanel(p) {
   return BASE_MONSTERS_PER_PANEL + p;
 }
 
+// Weighted pick from the current world's roster: the type weights decide the
+// mix of ground crawlers and flyers a panel throws at the player.
+function pickMonsterType() {
+  const roster = MONSTER_TYPES[world];
+  let total = 0;
+  for (const t of roster) total += t.weight;
+  let roll = Math.random() * total;
+  for (const t of roster) {
+    roll -= t.weight;
+    if (roll <= 0) return t;
+  }
+  return roster[roster.length - 1];
+}
+
 function spawnMonster() {
+  const type = pickMonsterType();
+  const flying = type.flying;
+  const baseY = flying ? MONSTER_FLY_Y : GROUND_Y;
   monsters.push({
-    x: PLAYFIELD_W - PANEL_MARGIN - MONSTER_W / 2,
-    y: GROUND_Y,
-    w: MONSTER_W,
-    h: MONSTER_H,
+    type,
+    flying,
+    baseY,                 // ground types stand on this; flyers bob up from it
+    x: PLAYFIELD_W - PANEL_MARGIN - type.w / 2,
+    y: baseY,
+    w: type.w,
+    h: type.h,
+    // Per-type speed, ramped a little for every panel the run has reached.
+    speedMult: type.speedMult * (1 + (panel - 1) * MONSTER_SPEED_PANEL_RAMP),
+    phase: Math.random() * Math.PI * 2, // offsets the bob so flyers never move in lockstep
+    anim: 0,                            // seconds alive: drives snips, flaps, crawl waves
     dead: false,
     hitTimer: 0,
   });
@@ -370,10 +396,16 @@ function slashHitsMonster(m) {
 
 function updateMonsters(dt) {
   for (const m of monsters) {
+    m.anim += dt;
     if (!m.dead) {
-      m.x -= MONSTER_SPEED * dt;
+      m.x -= MONSTER_SPEED * m.speedMult * dt;
       // Wrap from the left edge back to the right edge so the player must kill it.
       if (m.x < -m.w / 2) m.x = PLAYFIELD_W - PANEL_MARGIN - m.w / 2;
+      // Crawlers stay on the ground; flyers hover above head height and bob,
+      // which is what makes running underneath them safe.
+      m.y = m.flying
+        ? m.baseY - MONSTER_FLY_BOB * (0.5 + 0.5 * Math.sin(m.anim * MONSTER_FLY_BOB_SPEED + m.phase))
+        : m.baseY;
     }
     m.hitTimer = Math.max(0, m.hitTimer - dt);
   }
@@ -447,9 +479,10 @@ function update(dt) {
   updateMonsters(dt);
 
   // --- stomp ---
-  // Falling onto a live monster's top edge kills it and bounces the player.
+  // Falling onto a live ground crawler's top edge kills it and bounces the
+  // player. Flyers are not stompable: land on one and it is still side contact.
   for (const m of monsters) {
-    if (m.dead) continue;
+    if (m.dead || m.flying) continue;
     const mLeft = m.x - m.w / 2;
     const mRight = m.x + m.w / 2;
     const mTop = m.y - m.h;
@@ -606,7 +639,8 @@ function drawPanel() {
   ctx.fillRect(0, 0, PLAYFIELD_W, PLAYFIELD_H);
 
   // Whole world background (sky, midground scenery, ground platform) in one call.
-  drawWorldBackground(ctx, world, stage, currentPaper);
+  // The panel number drives its per-panel variation.
+  drawWorldBackground(ctx, world, stage, currentPaper, panel);
 
   // Minimal inking flash while a panel clear is being celebrated.
   if (panelClearTimer > 0) {
@@ -626,19 +660,300 @@ function drawPanel() {
   ctx.strokeRect(PANEL_MARGIN, PANEL_MARGIN, PLAYFIELD_W - PANEL_MARGIN * 2, PLAYFIELD_H - PANEL_MARGIN * 2);
 }
 
+// ---------------------------------------------------------------------------
+// Monster designs
+// Canvas 2D, comic-ink style: flat world colours, chunky COLOR_INK outlines and
+// halftone shading. Every shape is drawn in local space with the origin at the
+// middle of the enemy's feet and y growing downward, like the rest of the field.
+// ---------------------------------------------------------------------------
+
+// Fill the finished path(s) with a flat colour, shade with clipped halftone
+// dots, then ink the outline. A dying enemy flashes bright cream instead.
+function paintMonster(m, colors, fillColor) {
+  ctx.fillStyle = m.dead ? COLOR_EYE : (fillColor || colors.body);
+  ctx.fill();
+  if (!m.dead && getStage() >= 2) {
+    ctx.save();
+    ctx.clip();
+    ctx.globalAlpha = MONSTER_HALFTONE_OPACITY;
+    ctx.fillStyle = halftonePattern;
+    ctx.fillRect(-m.w * 2, -m.h * 3, m.w * 4, m.h * 6);
+    ctx.restore();
+  }
+  ctx.lineWidth = OUTLINE_WIDTH;
+  ctx.strokeStyle = COLOR_INK;
+  ctx.stroke();
+}
+
+// Cream eye with an ink pupil: the one face detail every living enemy shares.
+function monsterEye(x, y, r) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = COLOR_EYE;
+  ctx.fill();
+  ctx.lineWidth = OUTLINE_WIDTH * 0.6;
+  ctx.strokeStyle = COLOR_INK;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(x - r * 0.3, y, r * 0.45, 0, Math.PI * 2);
+  ctx.fillStyle = COLOR_INK;
+  ctx.fill();
+}
+
+// A star outline: alternating outer and inner radii, used for the shooting star.
+function starPath(cx, cy, outer, inner, points, rot) {
+  ctx.beginPath();
+  for (let i = 0; i < points * 2; i++) {
+    const r = i % 2 === 0 ? outer : inner;
+    const a = rot + (i * Math.PI) / points;
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
+// World 0, Print Shop: scissors. One half of the tool: a chunky blade plus its
+// handle ring, rotated about the pivot by `ang`.
+function scissorsHalf(m, colors, ang, w, h) {
+  const bladeLen = h * 0.62;
+  const bladeW = h * 0.14;
+  const ringX = w * 0.34;
+  const ringR = h * 0.18;
+  ctx.save();
+  ctx.rotate(ang);
+  // Blade, a wedge that opens upward as it walks.
+  ctx.beginPath();
+  ctx.moveTo(0, -bladeW / 2);
+  ctx.lineTo(-bladeLen * 0.7, -bladeW * 0.34);
+  ctx.lineTo(-bladeLen, 0);
+  ctx.lineTo(-bladeLen * 0.7, bladeW * 0.34);
+  ctx.lineTo(0, bladeW / 2);
+  ctx.closePath();
+  paintMonster(m, colors);
+  // Handle: a mustard shank out to the ring.
+  ctx.beginPath();
+  ctx.moveTo(0, -bladeW * 0.6);
+  ctx.lineTo(ringX - ringR, -ringR * 0.5);
+  ctx.lineTo(ringX - ringR, ringR * 0.5);
+  ctx.lineTo(0, bladeW * 0.6);
+  ctx.closePath();
+  paintMonster(m, colors, colors.accent);
+  // The ring itself is just thick ink, like a real scissor handle.
+  ctx.beginPath();
+  ctx.arc(ringX, 0, ringR, 0, Math.PI * 2);
+  ctx.lineWidth = OUTLINE_WIDTH * 1.3;
+  ctx.strokeStyle = COLOR_INK;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawScissorsMonster(m, w, h, colors) {
+  const open = 0.28 + 0.42 * (0.5 + 0.5 * Math.sin(m.anim * MONSTER_SNIP_SPEED));
+  const px = -w * 0.04;
+  const py = -h * 0.52;
+  ctx.save();
+  ctx.translate(px, py);
+  scissorsHalf(m, colors, open, w, h);
+  scissorsHalf(m, colors, -open, w, h);
+  ctx.restore();
+  // Pivot bolt holding the halves together.
+  ctx.beginPath();
+  ctx.arc(px, py, h * 0.07, 0, Math.PI * 2);
+  ctx.fillStyle = COLOR_INK;
+  ctx.fill();
+}
+
+// World 0, Print Shop: flying eraser block, streaks trailing behind it.
+function drawEraserMonster(m, w, h, colors) {
+  ctx.save();
+  ctx.strokeStyle = colors.accent;
+  ctx.lineCap = 'round';
+  ctx.lineWidth = OUTLINE_WIDTH * 0.7;
+  for (let i = 0; i < 3; i++) {
+    const y = -h * (0.3 + i * 0.22);
+    ctx.beginPath();
+    ctx.moveTo(w * 0.48, y);
+    ctx.lineTo(w * (0.9 + i * 0.3), y - h * 0.08 * (i - 1));
+    ctx.stroke();
+  }
+  ctx.restore();
+  // The block, with a cream sleeve band on its trailing side.
+  roundedPath([
+    { x: -w / 2, y: -h },
+    { x: w / 2, y: -h },
+    { x: w / 2, y: 0 },
+    { x: -w / 2, y: 0 },
+  ], h * 0.26);
+  paintMonster(m, colors);
+  ctx.beginPath();
+  ctx.rect(w * 0.02, -h, w * 0.2, h);
+  paintMonster(m, colors, colors.accent);
+  if (!m.dead) monsterEye(-w * 0.24, -h * 0.55, h * 0.16);
+}
+
+// World 1, The Garden: pink worm, crawling on a wave of body segments.
+function drawWormMonster(m, w, h, colors) {
+  const segs = 5;
+  const r = h * 0.3;
+  const step = (w - r * 2) / (segs - 1);
+  const wob = (i) => Math.sin(m.anim * MONSTER_WORM_WAVE_SPEED + i * 0.9) * h * 0.1;
+  // Tail first so the head lands on top of the last segment.
+  for (let i = segs - 1; i >= 0; i--) {
+    ctx.beginPath();
+    ctx.arc(-w / 2 + r + i * step, -r - h * 0.02 + wob(i), r * (1 - i * 0.06), 0, Math.PI * 2);
+    paintMonster(m, colors);
+  }
+  if (!m.dead) {
+    const hx = -w / 2 + r;
+    const hy = -r - h * 0.02 + wob(0);
+    monsterEye(hx - r * 0.25, hy - r * 0.2, r * 0.42);
+    // Chewing mouth, opening toward the way it crawls.
+    ctx.beginPath();
+    ctx.moveTo(hx - r * 0.95, hy + r * 0.3);
+    ctx.quadraticCurveTo(hx - r * 0.45, hy + r * 0.8, hx - r * 0.05, hy + r * 0.35);
+    ctx.lineWidth = OUTLINE_WIDTH * 0.7;
+    ctx.strokeStyle = COLOR_INK;
+    ctx.stroke();
+  }
+}
+
+// World 1, The Garden: a chunky bird with a flapping wing, used for the robin
+// (crest false, red breast) and the blue jay (crest true, cream belly).
+function drawBirdMonster(m, w, h, colors, crest) {
+  const cy = -h * 0.55;
+  const flap = m.dead ? 0 : Math.sin(m.anim * MONSTER_WING_SPEED) * 0.5;
+  const hx = -w * 0.26;
+  const hy = cy - h * 0.24;
+  // Tail feathers, trailing behind.
+  ctx.beginPath();
+  ctx.moveTo(w * 0.22, cy - h * 0.12);
+  ctx.lineTo(w * 0.5, cy - h * 0.3);
+  ctx.lineTo(w * 0.48, cy + h * 0.04);
+  ctx.lineTo(w * 0.2, cy + h * 0.14);
+  ctx.closePath();
+  paintMonster(m, colors);
+  // Body and breast.
+  ctx.beginPath();
+  ctx.ellipse(0, cy, w * 0.3, h * 0.3, 0, 0, Math.PI * 2);
+  paintMonster(m, colors);
+  ctx.beginPath();
+  ctx.ellipse(-w * 0.1, cy + h * 0.12, w * 0.19, h * 0.17, 0, 0, Math.PI * 2);
+  paintMonster(m, colors, colors.accent);
+  // Wing, hinged at the shoulder.
+  ctx.save();
+  ctx.translate(w * 0.02, cy - h * 0.16);
+  ctx.rotate(flap);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.quadraticCurveTo(w * 0.06, -h * 0.42, -w * 0.06, -h * 0.5);
+  ctx.quadraticCurveTo(w * 0.3, -h * 0.42, w * 0.34, -h * 0.02);
+  ctx.closePath();
+  paintMonster(m, colors);
+  ctx.restore();
+  // Head, beak, and the jay's spiked crest.
+  if (crest) {
+    ctx.beginPath();
+    ctx.moveTo(hx - h * 0.14, hy - h * 0.1);
+    ctx.lineTo(hx - h * 0.02, hy - h * 0.42);
+    ctx.lineTo(hx + h * 0.1, hy - h * 0.12);
+    ctx.closePath();
+    paintMonster(m, colors);
+  }
+  ctx.beginPath();
+  ctx.arc(hx, hy, h * 0.2, 0, Math.PI * 2);
+  paintMonster(m, colors);
+  ctx.beginPath();
+  ctx.moveTo(hx - h * 0.16, hy - h * 0.07);
+  ctx.lineTo(hx - h * 0.42, hy + h * 0.02);
+  ctx.lineTo(hx - h * 0.16, hy + h * 0.1);
+  ctx.closePath();
+  paintMonster(m, colors, m.dead ? undefined : colors.beak);
+  if (!m.dead) monsterEye(hx - h * 0.08, hy - h * 0.02, h * 0.07);
+}
+
+// World 2, Midnight Sky: a grinning gold sun with rays that roll as it goes.
+function drawSunMonster(m, w, h, colors) {
+  const r = h * 0.34;
+  const rayLen = h * 0.16;
+  const cy = -h * 0.5;
+  ctx.beginPath();
+  for (let i = 0; i < 12; i++) {
+    const a = m.anim * MONSTER_SPIN_SPEED + (i * Math.PI) / 6;
+    ctx.moveTo(Math.cos(a - 0.13) * r, cy + Math.sin(a - 0.13) * r);
+    ctx.lineTo(Math.cos(a) * (r + rayLen), cy + Math.sin(a) * (r + rayLen));
+    ctx.lineTo(Math.cos(a + 0.13) * r, cy + Math.sin(a + 0.13) * r);
+    ctx.closePath();
+  }
+  paintMonster(m, colors);
+  ctx.beginPath();
+  ctx.arc(0, cy, r, 0, Math.PI * 2);
+  paintMonster(m, colors);
+  if (!m.dead) {
+    ctx.beginPath();
+    ctx.arc(-r * 0.35, cy - r * 0.12, r * 0.12, 0, Math.PI * 2);
+    ctx.arc(r * 0.35, cy - r * 0.12, r * 0.12, 0, Math.PI * 2);
+    ctx.fillStyle = COLOR_INK;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0, cy + r * 0.1, r * 0.45, 0.25, Math.PI - 0.25);
+    ctx.lineWidth = OUTLINE_WIDTH * 0.8;
+    ctx.strokeStyle = COLOR_INK;
+    ctx.stroke();
+  }
+}
+
+// World 2, Midnight Sky: a fast cream star streaming a gold tail.
+function drawShootingStarMonster(m, w, h, colors) {
+  const outer = h * 0.5;
+  const cx = -w * 0.2;
+  const cy = -h * 0.5;
+  ctx.save();
+  for (let i = 0; i < 3; i++) {
+    const spread = (i - 1) * h * 0.2;
+    ctx.beginPath();
+    ctx.moveTo(cx + outer * 0.6, cy + spread * 0.5);
+    ctx.lineTo(cx + w * 0.5 + i * w * 0.08, cy + spread);
+    ctx.lineTo(cx + outer * 0.6, cy + spread * 0.5 + h * 0.1);
+    ctx.closePath();
+    ctx.fillStyle = colors.accent;
+    ctx.globalAlpha = 0.7 - i * 0.15;
+    ctx.fill();
+  }
+  ctx.restore();
+  starPath(cx, cy, outer, outer * 0.42, 5, m.anim * MONSTER_SPIN_SPEED * 0.6);
+  paintMonster(m, colors);
+  if (!m.dead) monsterEye(cx - outer * 0.12, cy - outer * 0.05, outer * 0.14);
+}
+
+// One enemy, drawn in its own local space. Killed crawlers squash flat under
+// the stomp; a dying enemy flashes cream for HIT_FLASH seconds, then vanishes.
+function drawMonster(m) {
+  const colors = MONSTER_COLORS[m.type.id];
+  const squash = m.dead && !m.flying ? STOMP_SQUASH * (m.hitTimer / HIT_FLASH) : 0;
+  ctx.save();
+  ctx.translate(m.x, m.y);
+  ctx.scale(1 + squash * 0.5, 1 - squash);
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  switch (m.type.id) {
+    case 'scissors': drawScissorsMonster(m, m.w, m.h, colors); break;
+    case 'eraser': drawEraserMonster(m, m.w, m.h, colors); break;
+    case 'worm': drawWormMonster(m, m.w, m.h, colors); break;
+    case 'robin': drawBirdMonster(m, m.w, m.h, colors, false); break;
+    case 'bluejay': drawBirdMonster(m, m.w, m.h, colors, true); break;
+    case 'sun': drawSunMonster(m, m.w, m.h, colors); break;
+    case 'shootingstar': drawShootingStarMonster(m, m.w, m.h, colors); break;
+  }
+  ctx.restore();
+}
+
 function drawMonsters() {
   for (const m of monsters) {
     // Dead monsters stay bright for HIT_FLASH seconds before disappearing.
     if (m.dead && m.hitTimer <= 0) continue;
-    const squash = m.hitTimer > 0 && !m.dead ? STOMP_SQUASH * (m.hitTimer / HIT_FLASH) : 0;
-    const h = m.h * (1 - squash);
-    const x = m.x - m.w / 2;
-    const y = m.y - h;
-    ctx.fillStyle = m.hitTimer > 0 ? COLOR_EYE : COLOR_MONSTER;
-    ctx.fillRect(x, y, m.w, h);
-    ctx.lineWidth = OUTLINE_WIDTH;
-    ctx.strokeStyle = COLOR_INK;
-    ctx.strokeRect(x, y, m.w, h);
+    drawMonster(m);
   }
 }
 

@@ -1,7 +1,8 @@
-// Lucid Ink world backgrounds: draws the Print Shop, The Garden and Midnight Sky panels in one call.
+// Lucid Ink world backgrounds: draws the Print Shop, The Garden and Midnight Sky panels in one call,
+// varying props, detail and colour lift per comic panel (1-8) while the stage keeps driving the look.
 import {
   PLAYFIELD_W, PLAYFIELD_H, PANEL_MARGIN, GROUND_Y, OUTLINE_WIDTH,
-  COLOR_PAPER, COLOR_INK, HALFTONE_OPACITY, FONT_STACK,
+  COLOR_PAPER, COLOR_INK, HALFTONE_OPACITY,
 } from './tuning.js';
 
 // Panel bounds every layer stays inside.
@@ -152,6 +153,45 @@ function sunburst(ctx, cx, cy, r0, r1, rays, weight) {
   }
 }
 
+// Per-panel progression: every panel 1-8 nudges what the scene shows so no two
+// panels read the same, without changing the world's theme or the stage look.
+function vary(panel) {
+  const pn = Math.max(1, Math.min(8, Math.round(Number(panel) || 1)));
+  const t = (pn - 1) / 7;                 // 0 on panel 1, 1 on panel 8
+  return {
+    panel: pn,
+    t,                                    // how far into the strip we are
+    shift: ((pn * 7) % 25) - 12,          // horizontal prop drift in pixels
+    extra: Math.floor((pn - 1) / 3),      // 0,0,0,1,1,1,2,2 extra details
+    accent: pn === 4 || pn === 8,         // the two hero panels get a burst
+    tint: 0.04 + t * 0.08,                // colour lift: later panels run richer
+  };
+}
+
+// A soft accent wash laid over the scenery: panels gain colour intensity toward 8.
+function panelTone(ctx, stage, p, v) {
+  if (stage < COLOR || v.t <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = v.tint;
+  ctx.fillStyle = p.accent;
+  ctx.fillRect(LEFT, TOP, RIGHT - LEFT, BASE - TOP);
+  ctx.restore();
+}
+
+// Rays bursting from a point: the shared "this panel is a hero panel" flourish.
+function accentBurst(ctx, stage, v, cx, cy, color) {
+  if (!v.accent || stage < COLOR) return;
+  ctx.save();
+  ctx.strokeStyle = stage === NEON ? color : COLOR_INK;
+  ctx.globalAlpha = stage === NEON ? 0.85 : 0.45;
+  if (stage === NEON) {
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 18;
+  }
+  sunburst(ctx, cx, cy, 16 + v.panel, 34 + v.panel * 1.6, 14, 3);
+  ctx.restore();
+}
+
 // Rounded ink blob (ink splatter), sized in pixels.
 function blob(ctx, cx, cy, r, seed) {
   const n = 7;
@@ -170,30 +210,31 @@ function blob(ctx, cx, cy, r, seed) {
 // Layer 1: sky
 // ---------------------------------------------------------------------------
 
-function drawSky(ctx, stage, p) {
+function drawSky(ctx, stage, p, v) {
   if (stage === SKETCH) {
     ctx.save();
     ctx.fillStyle = '#B8B0A0';
-    ctx.globalAlpha = 0.18;
+    ctx.globalAlpha = 0.14 + v.t * 0.08;   // the sketch firms up panel by panel
     ctx.fillRect(LEFT, TOP, RIGHT - LEFT, BASE - TOP);
     ctx.restore();
     return;
   }
   const grad = ctx.createLinearGradient(0, TOP, 0, BASE);
   grad.addColorStop(0, p.skyTop);
-  grad.addColorStop(0.55, p.skyMid);
+  grad.addColorStop(0.42 + v.t * 0.14, p.skyMid); // mid band sinks as the strip goes on
   grad.addColorStop(1, p.skyBottom);
   ctx.fillStyle = grad;
   ctx.fillRect(LEFT, TOP, RIGHT - LEFT, BASE - TOP);
 
   if (stage === NEON) {
-    // Neon horizon bloom.
+    // Neon horizon bloom, deeper on the later panels.
     ctx.save();
-    const glow = ctx.createLinearGradient(0, BASE - 110, 0, BASE);
+    const h = 110 + v.panel * 6;
+    const glow = ctx.createLinearGradient(0, BASE - h, 0, BASE);
     glow.addColorStop(0, 'rgba(255,244,210,0)');
-    glow.addColorStop(1, 'rgba(255,244,210,0.35)');
+    glow.addColorStop(1, `rgba(255,244,210,${(0.3 + v.t * 0.14).toFixed(3)})`);
     ctx.fillStyle = glow;
-    ctx.fillRect(LEFT, BASE - 110, RIGHT - LEFT, 110);
+    ctx.fillRect(LEFT, BASE - h, RIGHT - LEFT, h);
     ctx.restore();
   }
 }
@@ -246,7 +287,8 @@ function drawBrickBlock(ctx, stage, b, depth, p) {
   ctx.restore();
 }
 
-function drawWindows(ctx, stage, b, p) {
+// Windows light up differently on every panel: how many are lit, and which.
+function drawWindows(ctx, stage, b, p, v) {
   const cols = 2;
   const rows = b.windows;
   const winW = b.w * 0.22;
@@ -257,7 +299,18 @@ function drawWindows(ctx, stage, b, p) {
     for (let c = 0; c < cols; c++) {
       const wx = b.x + b.w * 0.16 + c * (b.w * 0.46);
       const wy = BASE - b.h + 34 + r * spanY;
-      surface(ctx, stage, wx, wy, winW, winH, stage === NEON ? p.glow : p.skyBottom, p.accent, COLOR_PAPER);
+      const lit = rng(v.panel * 977 + b.x + r * 17 + c * 29) > 0.2 + v.t * 0.3;
+      if (lit) {
+        if (stage === NEON) {
+          ctx.save();
+          ctx.shadowColor = p.glow;
+          ctx.shadowBlur = 10;
+        }
+        surface(ctx, stage, wx, wy, winW, winH, stage === NEON ? p.glow : p.skyBottom, p.accent, COLOR_PAPER);
+        if (stage === NEON) ctx.restore();
+      } else {
+        surface(ctx, stage, wx, wy, winW, winH, 'rgba(40,34,30,0.4)', p.accent, COLOR_INK);
+      }
     }
   }
   ctx.restore();
@@ -296,12 +349,13 @@ function drawFireEscape(ctx, stage, b) {
   ctx.restore();
 }
 
-function drawRoofKit(ctx, stage, b, p) {
+function drawRoofKit(ctx, stage, b, p, v) {
   const y = BASE - b.h;
   // Chimney.
   surface(ctx, stage, b.x + b.w * 0.18, y - 22, 16, 24, p.brickA, p.accent);
-  // Water tank on legs.
+  // Water tank on legs, taller on the later panels.
   const tx = b.x + b.w * 0.62;
+  const tankH = 24 + v.extra * 5;
   if (stage > SKETCH) {
     inkStyle(ctx, 0.6);
     ctx.beginPath();
@@ -309,12 +363,16 @@ function drawRoofKit(ctx, stage, b, p) {
     ctx.moveTo(tx + 26, y); ctx.lineTo(tx + 26, y - 14);
     ctx.stroke();
   }
-  surface(ctx, stage, tx - 4, y - 42, 34, 28, p.silver, p.accent, COLOR_PAPER);
+  surface(ctx, stage, tx - 4, y - 14 - tankH, 34, tankH, p.silver, p.accent, COLOR_PAPER);
+  // Later panels add a second vent stack beside the tank.
+  if (v.extra > 0) surface(ctx, stage, tx + 40, y - 20 - v.extra * 8, 10, 20 + v.extra * 8, p.silver, p.accent);
 }
 
-function drawInkSign(ctx, stage, p) {
-  const sx = RIGHT - 176;
-  const sy = 132;
+// The hanging shop sign: a stylised ink bottle and press roller, no lettering.
+// The whole sign drifts a little from panel to panel.
+function drawInkSign(ctx, stage, p, v) {
+  const sx = RIGHT - 176 + v.shift;
+  const sy = 132 + (v.panel % 3) * 7;
   ctx.save();
   inkStyle(ctx, 0.6);
   if (stage === SKETCH) sketchStyle(ctx, 0.7);
@@ -330,15 +388,44 @@ function drawInkSign(ctx, stage, p) {
   ctx.stroke();
   // Board.
   surface(ctx, stage, sx - 6, sy + 26, 78, 44, stage === NEON ? p.glow : COLOR_PAPER, p.accent, COLOR_PAPER);
-  if (stage > SKETCH) {
-    ctx.save();
-    ctx.fillStyle = COLOR_INK;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = `bold 22px ${FONT_STACK}`;
-    ctx.fillText('INK', sx + 33, sy + 49);
+  if (stage === SKETCH) {
     ctx.restore();
+    return;
   }
+  // Icon: ink bottle (left) and printing-press roller with its crank (right).
+  ctx.save();
+  ctx.strokeStyle = COLOR_INK;
+  ctx.fillStyle = COLOR_INK;
+  ctx.lineWidth = OUTLINE_WIDTH * 0.5;
+  ctx.lineJoin = 'round';
+  // Bottle body, then neck and cap.
+  ctx.beginPath();
+  ctx.moveTo(sx + 14, sy + 58);
+  ctx.lineTo(sx + 17, sy + 46);
+  ctx.lineTo(sx + 29, sy + 46);
+  ctx.lineTo(sx + 32, sy + 58);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.rect(sx + 19, sy + 38, 8, 8);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.rect(sx + 16, sy + 33, 14, 5);
+  ctx.fill();
+  ctx.stroke();
+  // Roller barrel with a crank handle.
+  ctx.beginPath();
+  ctx.rect(sx + 38, sy + 43, 24, 13);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(sx + 62, sy + 49);
+  ctx.lineTo(sx + 68, sy + 49);
+  ctx.lineTo(sx + 68, sy + 37);
+  ctx.stroke();
+  ctx.restore();
   ctx.restore();
 }
 
@@ -371,14 +458,15 @@ function drawScissors(ctx, stage, p) {
   ctx.restore();
 }
 
-function drawPowerLines(ctx, stage, p) {
+function drawPowerLines(ctx, stage, p, v) {
   if (stage <= SKETCH) return;
   ctx.save();
   ctx.strokeStyle = COLOR_INK;
   ctx.lineWidth = 1.2;
   ctx.globalAlpha = stage === INK ? 0.4 : 0.6;
-  const y = 128;
-  const poles = [LEFT + 40, LEFT + 210, RIGHT - 250, RIGHT - 90];
+  const y = 128 + (v.panel % 4) * 4;                  // the wires ride up and down
+  const poles = [LEFT + 40 + v.shift, LEFT + 210 + v.shift,
+    RIGHT - 250 - v.shift, RIGHT - 90 - v.shift];
   for (const px of poles) {
     ctx.beginPath();
     ctx.moveTo(px, y);
@@ -401,37 +489,48 @@ function drawPowerLines(ctx, stage, p) {
   }
   ctx.stroke();
   ctx.restore();
-  // Birds perched on the wires.
+  // Birds perched on the wires: a couple more join on the later panels.
   ctx.save();
   inkStyle(ctx, 0.5);
   bird(ctx, poles[1] + 40, y + 16, 1);
   bird(ctx, poles[1] + 58, y + 20, 0.8);
   bird(ctx, poles[2] - 30, y + 13, 0.9);
+  if (v.extra > 0) bird(ctx, poles[2] - 12, y + 18, 0.75);
+  if (v.extra > 1) bird(ctx, poles[0] + 60, y + 14, 0.85);
   ctx.restore();
 }
 
-function drawInkSplatters(ctx, stage, p) {
+function drawInkSplatters(ctx, stage, p, v) {
   if (stage <= SKETCH) return;
   ctx.save();
   inkStyle(ctx, 0.6);
+  // A pool of candidate splats: which ones show, and how many, rotates per panel.
   const spots = [
     { x: LEFT + 120, y: 168, r: 13 },
     { x: LEFT + 320, y: 96, r: 9 },
     { x: RIGHT - 300, y: 200, r: 11 },
     { x: LEFT + 240, y: 236, r: 7 },
+    { x: RIGHT - 190, y: 108, r: 12 },
+    { x: LEFT + 430, y: 190, r: 8 },
+    { x: RIGHT - 420, y: 246, r: 10 },
   ];
-  for (let i = 0; i < spots.length; i++) {
-    const s = spots[i];
+  const count = 3 + (v.panel % 4);        // 3 to 6 splats, a new set every panel
+  const start = v.panel % spots.length;
+  for (let i = 0; i < count; i++) {
+    const s = spots[(start + i) % spots.length];
+    const x = s.x + v.shift;
+    const y = s.y + ((v.panel % 3) - 1) * 9;
     ctx.fillStyle = stage === INK ? COLOR_INK : p.accent;
-    blob(ctx, s.x, s.y, s.r, i * 97 + 11);
+    blob(ctx, x, y, s.r, v.panel * 97 + i * 31 + 11);
     ctx.fill();
     ctx.stroke();
-    // A couple of flung droplets.
-    for (let d = 0; d < 3; d++) {
-      const a = rng(i * 53 + d * 7) * Math.PI * 2;
+    // A couple of flung droplets, always in the same direction for this panel.
+    const flung = 2 + (v.panel + i) % 3;
+    for (let d = 0; d < flung; d++) {
+      const a = rng(v.panel * 53 + i * 7 + d * 19) * Math.PI * 2;
       const dist = s.r * (2.1 + rng(i * 29 + d) * 1.6);
       ctx.beginPath();
-      ctx.arc(s.x + Math.cos(a) * dist, s.y + Math.sin(a) * dist * 0.7,
+      ctx.arc(x + Math.cos(a) * dist, y + Math.sin(a) * dist * 0.7,
         Math.max(1.5, s.r * 0.16), 0, Math.PI * 2);
       ctx.fill();
     }
@@ -449,8 +548,8 @@ function drawBaseShadow(ctx, stage, p) {
   ctx.restore();
 }
 
-function drawPrintShop(ctx, stage, p) {
-  // Far row of brick blocks, hazy behind everything.
+function drawPrintShop(ctx, stage, p, v) {
+  // Far row of brick blocks, hazy behind everything. Later panels add one more roof.
   const far = [
     { x: LEFT + 6, w: 70, h: 132, shade: p.brickA },
     { x: LEFT + 84, w: 58, h: 172, shade: p.brickC },
@@ -459,39 +558,47 @@ function drawPrintShop(ctx, stage, p) {
     { x: RIGHT - 172, w: 90, h: 122, shade: p.brickA },
     { x: RIGHT - 74, w: 62, h: 188, shade: p.brickC },
   ];
+  if (v.extra > 1) far.push({ x: LEFT + 240, w: 54, h: 144, shade: p.brickC });
   for (const b of far) drawBrickBlock(ctx, stage, b, 0.5, p);
   drawBaseShadow(ctx, stage, p);
 
-  drawPowerLines(ctx, stage, p);
+  drawPowerLines(ctx, stage, p, v);
 
   // Near row, taller, with lit windows, fire escapes and rooftop kit.
+  // The pair slides horizontally panel to panel so the skyline keeps changing.
   const near = [
-    { x: LEFT + 22, w: 106, h: 212, shade: p.brickB, windows: 4, fire: true, roof: true },
-    { x: RIGHT - 156, w: 130, h: 238, shade: p.brickA, windows: 4, fire: true, roof: false },
+    { x: LEFT + 22 + v.shift, w: 106, h: 212, shade: p.brickB, windows: 4, fire: true, roof: true },
+    { x: RIGHT - 156 - v.shift, w: 130, h: 238, shade: p.brickA, windows: 4, fire: true, roof: false },
   ];
   for (const b of near) drawBrickBlock(ctx, stage, b, 1, p);
   for (const b of near) {
     if (stage > SKETCH) {
-      drawWindows(ctx, stage, b, p);
-      if (b.roof) drawRoofKit(ctx, stage, b, p);
+      drawWindows(ctx, stage, b, p, v);
+      if (b.roof) drawRoofKit(ctx, stage, b, p, v);
       if (b.fire) drawFireEscape(ctx, stage, b);
     }
   }
 
-  drawInkSign(ctx, stage, p);
+  // Hero panels 4 and 8 get a burst in a different patch of the sky.
+  accentBurst(ctx, stage, v, v.panel === 4 ? LEFT + 330 : RIGHT - 470,
+    v.panel === 4 ? 128 : 208, p.accent);
+
+  drawInkSign(ctx, stage, p, v);
   drawScissors(ctx, stage, p);
-  drawInkSplatters(ctx, stage, p);
+  drawInkSplatters(ctx, stage, p, v);
 }
 
 // ---------------------------------------------------------------------------
 // World 1: The Garden
 // ---------------------------------------------------------------------------
 
-function drawHills(ctx, stage, p) {
+function drawHills(ctx, stage, p, v) {
+  // Each panel slides the hill crests along, so the horizon never repeats.
+  const drift = v.panel * 26;
   const layers = [
-    { y: BASE - 96, amp: 34, freq: 0.0055, shift: 0, fill: p.hillFar },
-    { y: BASE - 58, amp: 26, freq: 0.008, shift: 140, fill: p.hillMid },
-    { y: BASE - 24, amp: 18, freq: 0.011, shift: 60, fill: p.hillNear },
+    { y: BASE - 96 - v.extra * 6, amp: 34, freq: 0.0055, shift: drift, fill: p.hillFar },
+    { y: BASE - 58, amp: 26, freq: 0.008, shift: 140 + drift, fill: p.hillMid },
+    { y: BASE - 24, amp: 18, freq: 0.011, shift: 60 - drift, fill: p.hillNear },
   ];
   for (let i = 0; i < layers.length; i++) {
     const L = layers[i];
@@ -669,13 +776,19 @@ function drawGate(ctx, stage, x, groundY, p) {
   ctx.restore();
 }
 
-function drawFlowers(ctx, stage, p) {
+function drawFlowers(ctx, stage, p, v) {
   if (stage <= SKETCH) return;
   const colors = [p.pink, p.glow, p.robin];
-  const spots = [
+  // A larger bed to pick from: the count and the mix change every panel.
+  const all = [
     { x: LEFT + 60, h: 26 }, { x: LEFT + 108, h: 34 }, { x: LEFT + 168, h: 22 },
-    { x: RIGHT - 84, h: 30 }, { x: RIGHT - 140, h: 24 },
+    { x: RIGHT - 84, h: 30 }, { x: RIGHT - 140, h: 24 }, { x: LEFT + 320, h: 28 },
+    { x: RIGHT - 260, h: 20 }, { x: LEFT + 400, h: 32 }, { x: RIGHT - 190, h: 34 },
   ];
+  const count = 4 + (v.panel % 4);        // 4 to 7 blooms, rotating down the bed
+  const start = (v.panel * 2) % all.length;
+  const spots = [];
+  for (let i = 0; i < count; i++) spots.push(all[(start + i) % all.length]);
   ctx.save();
   inkStyle(ctx, 0.55);
   for (let i = 0; i < spots.length; i++) {
@@ -693,7 +806,7 @@ function drawFlowers(ctx, stage, p) {
       const a = (Math.PI * 2 * pt) / 5;
       ctx.beginPath();
       ctx.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, r * 0.85, 0, Math.PI * 2);
-      ctx.fillStyle = stage === INK ? COLOR_INK : colors[i % colors.length];
+      ctx.fillStyle = stage === INK ? COLOR_INK : colors[(i + v.panel) % colors.length];
       ctx.fill();
     }
     ctx.beginPath();
@@ -702,74 +815,86 @@ function drawFlowers(ctx, stage, p) {
     ctx.fill();
     ctx.stroke();
   }
-  // A small robin perched on the gate arch.
+  // A small robin perched on the gate arch, with company on the later panels.
   ctx.strokeStyle = COLOR_INK;
-  bird(ctx, LEFT + 250, 284, 1.2);
+  bird(ctx, LEFT + 250 + v.shift * 0.5, 284, 1.2);
+  if (v.extra > 0) bird(ctx, LEFT + 300 - v.shift * 0.5, 292, 0.9);
   ctx.restore();
 }
 
-function drawGarden(ctx, stage, p) {
-  drawHills(ctx, stage, p);
+function drawGarden(ctx, stage, p, v) {
+  drawHills(ctx, stage, p, v);
 
   // Leaf halftone washing the distant field, behind every tree and hedge.
   if (stage >= COLOR) {
     ctx.save();
-    ctx.globalAlpha = HALFTONE_OPACITY;
+    ctx.globalAlpha = HALFTONE_OPACITY * (1 + v.t * 0.5);
     ctx.fillStyle = halftone(ctx, p.leafDark);
     ctx.fillRect(LEFT, BASE - 150, RIGHT - LEFT, 150);
     ctx.restore();
   }
 
-  // Far tree line.
-  drawTree(ctx, stage, LEFT + 70, BASE - 40, 0.7, p);
-  drawTree(ctx, stage, RIGHT - 90, BASE - 36, 0.6, p);
-  drawTree(ctx, stage, PLAYFIELD_W / 2 + 40, BASE - 46, 0.5, p);
+  const sx = v.shift * 1.4;               // plants drift a little each panel
 
-  drawGate(ctx, stage, LEFT + 250, BASE - 20, p);
+  // Far tree line: the middle tree wanders, and later panels gain a fourth.
+  drawTree(ctx, stage, LEFT + 70 + sx, BASE - 40, 0.7, p);
+  drawTree(ctx, stage, RIGHT - 90 - sx, BASE - 36, 0.6, p);
+  drawTree(ctx, stage, PLAYFIELD_W / 2 + 40 + sx * 2, BASE - 46, 0.5, p);
+  if (v.extra > 1) drawTree(ctx, stage, LEFT + 400 + sx, BASE - 42, 0.55, p);
+
+  drawGate(ctx, stage, LEFT + 250 + v.shift, BASE - 20, p);
 
   // Mid hedge and planters.
-  drawHedge(ctx, stage, LEFT + 10, BASE - 78, 150, p);
+  drawHedge(ctx, stage, LEFT + 10, BASE - 78 - v.extra * 4, 150, p);
   drawHedge(ctx, stage, RIGHT - 190, BASE - 74, 180, p);
-  drawPlanter(ctx, stage, LEFT + 46, BASE - 4, p);
-  drawPlanter(ctx, stage, RIGHT - 46, BASE - 4, p);
+  drawPlanter(ctx, stage, LEFT + 46 + sx, BASE - 4, p);
+  drawPlanter(ctx, stage, RIGHT - 46 - sx, BASE - 4, p);
+  // Panels 4 and up add one more planter between the pair.
+  if (v.extra > 0) drawPlanter(ctx, stage, LEFT + 300 - sx, BASE - 4, p);
 
-  // Near trees in front of the hedges.
-  drawTree(ctx, stage, LEFT + 160, BASE - 6, 1.0, p);
-  drawTree(ctx, stage, RIGHT - 120, BASE - 6, 1.1, p);
+  // Near trees in front of the hedges, shifting against the far line.
+  drawTree(ctx, stage, LEFT + 160 - sx, BASE - 6, 1.0, p);
+  drawTree(ctx, stage, RIGHT - 120 + sx, BASE - 6, 1.1, p);
 
-  drawFlowers(ctx, stage, p);
+  // Hero panels 4 and 8 flower into an open burst above the hedges.
+  accentBurst(ctx, stage, v, v.panel === 4 ? PLAYFIELD_W / 2 - 40 : PLAYFIELD_W / 2 + 150,
+    v.panel === 4 ? 150 : 196, p.pink);
+
+  drawFlowers(ctx, stage, p, v);
 }
 
 // ---------------------------------------------------------------------------
 // World 2: Midnight Sky
 // ---------------------------------------------------------------------------
 
-function drawStars(ctx, stage, p) {
+function drawStars(ctx, stage, p, v) {
   if (stage <= SKETCH) return;
   ctx.save();
   ctx.strokeStyle = COLOR_INK;
   ctx.lineWidth = 1.4;
-  const count = 14;
+  const count = 10 + v.panel * 2;         // 12 stars on panel 1 up to 26 on panel 8
+  const spread = 150 + v.t * 40;          // the later skies open up vertically
   for (let i = 0; i < count; i++) {
     const x = LEFT + 24 + rng(i * 71 + 3) * (RIGHT - LEFT - 48);
-    const y = TOP + 22 + rng(i * 37 + 9) * 150;
+    const y = TOP + 22 + rng(i * 37 + 9) * spread;
     const r = 3 + rng(i * 13 + 5) * 4;
     star(ctx, x, y, r, stage === INK ? COLOR_PAPER : p.moon);
   }
-  // A couple of sparkle bursts.
+  // A couple of sparkle bursts, nudged with the panel.
   if (stage >= COLOR) {
     ctx.strokeStyle = stage === NEON ? p.gold : COLOR_INK;
     ctx.lineWidth = 2;
-    sunburst(ctx, LEFT + 150, 96, 12, 22, 4, 2);
-    sunburst(ctx, RIGHT - 200, 150, 10, 18, 4, 2);
+    sunburst(ctx, LEFT + 150 + v.shift, 96 + (v.panel % 4) * 8, 12, 22, 4, 2);
+    sunburst(ctx, RIGHT - 200 - v.shift, 150 - (v.panel % 3) * 6, 10, 18, 4, 2);
   }
   ctx.restore();
 }
 
-function drawMoon(ctx, stage, p) {
+function drawMoon(ctx, stage, p, v) {
   if (stage === SKETCH) return;
-  const cx = RIGHT - 120;
-  const cy = 120;
+  const cx = RIGHT - 120 - v.shift;
+  const cy = 120 + (v.panel % 3) * 5;
+  const r = 48 + v.t * 9;                 // the moon swells toward the last panel
   ctx.save();
   inkStyle(ctx, 0.85);
   if (stage === NEON) {
@@ -778,26 +903,29 @@ function drawMoon(ctx, stage, p) {
   }
   ctx.fillStyle = p.moon;
   ctx.beginPath();
-  ctx.arc(cx, cy, 52, -Math.PI * 0.62, Math.PI * 0.62);
-  ctx.arc(cx + 24, cy, 42, Math.PI * 0.5, -Math.PI * 0.5, true);
+  ctx.arc(cx, cy, r, -Math.PI * 0.62, Math.PI * 0.62);
+  ctx.arc(cx + 24, cy, r - 10, Math.PI * 0.5, -Math.PI * 0.5, true);
   ctx.closePath();
   ctx.fill();
   ctx.shadowBlur = 0;
   ctx.stroke();
-  // Crater dents.
+  // Crater dents: a different set on every panel.
   if (stage >= COLOR) {
     ctx.globalAlpha = 0.25;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(cx - 14, cy - 18, 8, 0, Math.PI * 2);
-    ctx.arc(cx - 4, cy + 16, 6, 0, Math.PI * 2);
+    for (let i = 0; i < 2 + (v.panel % 3); i++) {
+      const a = rng(v.panel * 41 + i * 13) * Math.PI * 2;
+      const d = rng(v.panel * 17 + i * 7) * r * 0.45;
+      ctx.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d, 4 + rng(i * 5 + v.panel) * 4, 0, Math.PI * 2);
+    }
     ctx.stroke();
     ctx.globalAlpha = 1;
   }
   ctx.restore();
 }
 
-function drawSkyline(ctx, stage, p) {
+function drawSkyline(ctx, stage, p, v) {
   // Back row: flat dark silhouettes.
   const back = [
     { x: LEFT + 4, w: 56, h: 150, shade: p.buildB },
@@ -807,6 +935,7 @@ function drawSkyline(ctx, stage, p) {
     { x: RIGHT - 178, w: 68, h: 132, shade: p.buildB },
     { x: RIGHT - 104, w: 48, h: 200, shade: p.buildB },
   ];
+  if (v.extra > 0) back.push({ x: LEFT + 380, w: 50, h: 176, shade: p.buildB });
   for (const b of back) {
     ctx.save();
     ctx.globalAlpha = 0.7;
@@ -814,23 +943,24 @@ function drawSkyline(ctx, stage, p) {
     ctx.restore();
   }
 
-  // Front row: taller, with lit windows and rooftop antennae.
+  // Front row: taller, with lit windows and rooftop antennae. The row slides
+  // a little per panel, and the towers grow as the strip goes on.
   const front = [
-    { x: LEFT + 18, w: 92, h: 236, shade: p.buildA, rows: 6 },
-    { x: PLAYFIELD_W / 2 - 40, w: 84, h: 276, shade: p.buildC, rows: 7 },
-    { x: RIGHT - 150, w: 108, h: 250, shade: p.buildA, rows: 6 },
+    { x: LEFT + 18 + v.shift, w: 92, h: 236 + v.extra * 10, shade: p.buildA, rows: 6 },
+    { x: PLAYFIELD_W / 2 - 40 - v.shift, w: 84, h: 276 + v.extra * 8, shade: p.buildC, rows: 7 },
+    { x: RIGHT - 150 - v.shift, w: 108, h: 250 - v.extra * 6, shade: p.buildA, rows: 6 },
   ];
   for (const b of front) {
     surface(ctx, stage, b.x, BASE - b.h, b.w, b.h, b.shade, p.accent);
     if (stage > SKETCH) {
-      // Lit windows.
+      // Lit windows: how many are lit shifts panel by panel.
       const cols = 2;
       const winW = b.w * 0.2;
       const winH = 13;
       const spanY = (b.h - 60) / b.rows;
       for (let r = 0; r < b.rows; r++) {
         for (let c = 0; c < cols; c++) {
-          const lit = rng(b.x + r * 17 + c * 29) > 0.25;
+          const lit = rng(v.panel * 613 + b.x + r * 17 + c * 29) > 0.1 + v.t * 0.4;
           const wx = b.x + b.w * 0.16 + c * (b.w * 0.46);
           const wy = BASE - b.h + 30 + r * spanY;
           ctx.save();
@@ -843,22 +973,26 @@ function drawSkyline(ctx, stage, p) {
           ctx.restore();
         }
       }
-      // Antenna with a blinker.
+      // Antenna with a blinker, taller on the later panels.
       ctx.save();
       inkStyle(ctx, 0.5);
       ctx.beginPath();
       ctx.moveTo(b.x + b.w * 0.5, BASE - b.h);
-      ctx.lineTo(b.x + b.w * 0.5, BASE - b.h - 30);
+      ctx.lineTo(b.x + b.w * 0.5, BASE - b.h - 30 - v.extra * 14);
       ctx.stroke();
       ctx.restore();
     }
   }
 }
 
-function drawOpenSign(ctx, stage, p) {
+// The neon shopfront: a glowing geometric burst in a gold surround, no lettering.
+function drawNeonBurst(ctx, stage, p, v) {
   if (stage === SKETCH) return;
-  const nx = PLAYFIELD_W / 2 - 62;
-  const ny = 176;
+  const nx = PLAYFIELD_W / 2 - 62 - v.shift;
+  const ny = 176 + (v.panel % 3) * 8;
+  const cx = nx + 62;
+  const cy = ny + 23;
+  const rays = 6 + v.extra * 2;           // more points on the later panels
   ctx.save();
   if (stage === NEON) {
     ctx.shadowColor = p.gold;
@@ -866,24 +1000,40 @@ function drawOpenSign(ctx, stage, p) {
   }
   surface(ctx, stage, nx, ny, 124, 46, stage === INK ? COLOR_PAPER : p.gold, p.accent, COLOR_PAPER);
   ctx.shadowBlur = 0;
-  if (stage > SKETCH) {
-    ctx.fillStyle = COLOR_INK;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = `bold 26px ${FONT_STACK}`;
-    ctx.fillText('OPEN', nx + 62, ny + 24);
+  // Ink spokes on paper at stage 1, ink spokes on gold from stage 2 up.
+  ctx.strokeStyle = COLOR_INK;
+  ctx.fillStyle = COLOR_INK;
+  ctx.lineWidth = OUTLINE_WIDTH * 0.55;
+  ctx.lineJoin = 'round';
+  // Radiating spokes.
+  ctx.beginPath();
+  for (let i = 0; i < rays; i++) {
+    const a = (Math.PI * 2 * i) / rays + 0.2;
+    ctx.moveTo(cx + Math.cos(a) * 9, cy + Math.sin(a) * 9);
+    ctx.lineTo(cx + Math.cos(a) * 18, cy + Math.sin(a) * 18);
   }
+  ctx.stroke();
+  // Diamond core.
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 11);
+  ctx.lineTo(cx + 11, cy);
+  ctx.lineTo(cx, cy + 11);
+  ctx.lineTo(cx - 11, cy);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
   ctx.restore();
 }
 
-function drawMidnightWires(ctx, stage, p) {
+function drawMidnightWires(ctx, stage, p, v) {
   if (stage <= SKETCH) return;
   ctx.save();
   ctx.strokeStyle = COLOR_INK;
   ctx.lineWidth = 1.2;
   ctx.globalAlpha = stage === INK ? 0.4 : 0.55;
-  const y = 118;
-  const poles = [LEFT + 60, PLAYFIELD_W / 2 - 180, PLAYFIELD_W / 2 + 180, RIGHT - 60];
+  const y = 118 + (v.panel % 4) * 5;
+  const poles = [LEFT + 60 + v.shift, PLAYFIELD_W / 2 - 180 - v.shift,
+    PLAYFIELD_W / 2 + 180 + v.shift, RIGHT - 60 - v.shift];
   for (const px of poles) {
     ctx.beginPath();
     ctx.moveTo(px, y);
@@ -901,39 +1051,44 @@ function drawMidnightWires(ctx, stage, p) {
   inkStyle(ctx, 0.5);
   bird(ctx, poles[1] + 34, y + 13, 0.9);
   bird(ctx, poles[2] - 46, y + 13, 0.9);
+  if (v.extra > 0) bird(ctx, poles[0] + 70, y + 14, 0.8);
   ctx.restore();
 }
 
-function drawMidnight(ctx, stage, p) {
-  drawStars(ctx, stage, p);
-  drawMoon(ctx, stage, p);
+function drawMidnight(ctx, stage, p, v) {
+  drawStars(ctx, stage, p, v);
+  drawMoon(ctx, stage, p, v);
 
   // Glowing gold halftone haze along the horizon, behind the skyline.
   if (stage >= COLOR) {
     ctx.save();
-    ctx.globalAlpha = HALFTONE_OPACITY * (stage === NEON ? 1.4 : 1);
+    ctx.globalAlpha = HALFTONE_OPACITY * (stage === NEON ? 1.4 : 1) * (1 + v.t * 0.6);
     ctx.fillStyle = halftone(ctx, p.gold);
     ctx.fillRect(LEFT, BASE - 130, RIGHT - LEFT, 130);
     ctx.restore();
   }
 
-  drawSkyline(ctx, stage, p);
-  drawMidnightWires(ctx, stage, p);
-  drawOpenSign(ctx, stage, p);
+  drawSkyline(ctx, stage, p, v);
+  drawMidnightWires(ctx, stage, p, v);
+  drawNeonBurst(ctx, stage, p, v);
 
-  // Gold sun-burst accents over the skyline.
+  // Gold sun-burst accents over the skyline, spreading as the panels go on.
   if (stage >= COLOR) {
     ctx.save();
     ctx.strokeStyle = stage === NEON ? p.gold : COLOR_INK;
     ctx.globalAlpha = stage === NEON ? 0.9 : 0.5;
-    sunburst(ctx, LEFT + 250, 150, 22, 40, 12, 3);
+    sunburst(ctx, LEFT + 250 + v.shift, 150 - v.extra * 8, 22, 40, 12, 3);
     if (stage === NEON) {
       ctx.shadowColor = p.gold;
       ctx.shadowBlur = 16;
     }
-    sunburst(ctx, RIGHT - 320, 86, 16, 30, 10, 2.5);
+    sunburst(ctx, RIGHT - 320 - v.shift, 86 + (v.panel % 3) * 9, 16, 30, 10, 2.5);
     ctx.restore();
   }
+
+  // Hero panels 4 and 8 light up a wide burst above the towers.
+  accentBurst(ctx, stage, v, v.panel === 4 ? PLAYFIELD_W / 2 - 150 : PLAYFIELD_W / 2 + 130,
+    v.panel === 4 ? 96 : 214, p.gold);
 }
 
 // ---------------------------------------------------------------------------
@@ -1017,18 +1172,21 @@ function drawGround(ctx, stage, p, paper) {
 // ---------------------------------------------------------------------------
 
 // Draws the whole background for one world panel: sky, midground scenery and ground platform.
-export function drawWorldBackground(ctx, world, stage, currentPaper) {
+// `panel` (1-8) varies the props, extra detail, window lights and colour lift per panel.
+export function drawWorldBackground(ctx, world, stage, currentPaper, panel) {
   const p = PALETTES[world % PALETTES.length];
+  const v = vary(panel);
   ctx.save();
   // Nothing may spill outside the comic panel.
   ctx.beginPath();
   ctx.rect(LEFT, TOP, RIGHT - LEFT, PLAYFIELD_H - TOP - PANEL_MARGIN);
   ctx.clip();
 
-  drawSky(ctx, stage, p);
-  if (world === 0) drawPrintShop(ctx, stage, p);
-  else if (world === 1) drawGarden(ctx, stage, p);
-  else drawMidnight(ctx, stage, p);
+  drawSky(ctx, stage, p, v);
+  if (world === 0) drawPrintShop(ctx, stage, p, v);
+  else if (world === 1) drawGarden(ctx, stage, p, v);
+  else drawMidnight(ctx, stage, p, v);
+  panelTone(ctx, stage, p, v);
   drawGround(ctx, stage, p, currentPaper);
 
   ctx.restore();

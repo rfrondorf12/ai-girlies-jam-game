@@ -28,22 +28,22 @@ USE THE VISUAL SYSTEMS OUTLINED HERE. RECREATE THE STORYBOARD INTERACTIONS AND E
 > - `Screenshot 2026-11-06 at 12.09.14 PM.png` (20 comic mockup cards: Red Wedge, Ink Drop, Living Squiggle, Half Moon).
 > - *Geometry Dash* for snappy, instant-restart rhythmic jumping and clear obstacle readability.
 > - Vintage 1960s Sunday funny papers and risograph printing with visible halftone dot patterns and ink offsets.
-> - ![[Pasted image 20261106123855.png]]
-> - ![[Screenshot 2026-11-06 at 2.54.20 PM.png]]
-> - ![[Screenshot 2026-11-06 at 2.55.00 PM.png]]
-> - 
-> - ![[Screenshot 2026-11-06 at 2.55.11 PM.png]]
 > - 
 > - 
 > - USE THIS VISUAL SYSTEM. USE WORLD ELEMENTS AS DEPICTED IN THESE IMAGES. KEEP STYLE OF THESE ELEMENTS.![[Screenshot 2026-11-06 at 2.54.36 PM.png]]![[Screenshot 2026-11-06 at 2.53.37 PM.png]]
-> - ![[Pasted image 20261106123908.png]]
 > - 
+> - OBSTACLES SHOULD ALL LOOK LIKE THIS. THEY SHOULD FLY AT THE PROTAGONIST, WHO MUST DUCK OR SLASH THE OBSTACLES. 
+> - ![[Screenshot 2026-11-06 at 3.28.33 PM.png]]![[Screenshot 2026-11-06 at 3.28.42 PM.png]]![[Screenshot 2026-11-06 at 3.28.55 PM.png]]
 > - 
 > - WORLD 1 - KEEP COLOR PALETTE![[Screenshot 2026-11-06 at 3.06.33 PM.png]]
 > - WORLD 2 - KEEP COLOR PALETTE![[Screenshot 2026-11-06 at 3.06.14 PM.png]]
 > - D
 > - WORLD 3 - KEEP COLOR PALETTE AND STYLE![[Screenshot 2026-11-06 at 3.07.44 PM.png]]
-> - D
+> - d
+> - AS THE WORLD SCROLLS TO THE RIGHT, IT SHOULD GO FROM SKETCH OUTLINE TO FULL COMIC BOOK LIKE IN THESE PICTURES![[Screenshot 2026-11-06 at 3.13.40 PM.png]]
+> -
+> AT THE END OF THE LEVEL, IF THE PLAYER WINS IT, A COMIC PANEL IS CREATED AND SHOWN ON THE WIN SCREEN. WHEN REACHING PANEL 8, ALL 8 PANELS ARE PUT INTO A COMIC STRIP LIKE THESE PICTURES.
+> ![[Screenshot 2026-11-06 at 3.17.23 PM.png]]
 
 # Character designs
 Do not stray from these character designs. The characters should have hands and expressions as seen below. 

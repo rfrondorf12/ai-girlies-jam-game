@@ -35,9 +35,35 @@ export const SLASH_SAMPLES = 64;       // points sampled along the arc for hit d
 export const SHOULDER_HEIGHT = 0.55;   // arc pivot height above the feet, as a fraction of player height
 
 // --- Monsters ---
-export const MONSTER_W = 48;           // ground-crawling ink rectangle width
-export const MONSTER_H = 44;           // ground-crawling ink rectangle height
-export const MONSTER_SPEED = 110;      // crawling speed in units per second, moving left
+// One roster per world, each mixing a low ground crawler you jump over or stomp
+// on the head with a flying threat you run under or slash mid-air.
+// w/h = size in units, flying = airborne, speedMult = per-type speed multiplier
+// on MONSTER_SPEED, weight = relative chance of being picked for a spawn slot.
+export const MONSTER_SPEED = 110;        // base leftward speed in units per second, before the per-type multiplier
+export const MONSTER_SPEED_PANEL_RAMP = 0.07; // extra speed multiplier added per panel past the first
+export const MONSTER_FLY_Y = 388;        // bottom y of a flying monster: above the hero's head, so you can run under it
+export const MONSTER_FLY_BOB = 14;       // how far a flying monster drifts up and down, in units
+export const MONSTER_FLY_BOB_SPEED = 2.4; // radians per second of the flight bob
+export const MONSTER_HALFTONE_OPACITY = 0.14; // dot shading over each enemy's flat colour
+export const MONSTER_SNIP_SPEED = 6;     // radians per second the scissor blades open and close
+export const MONSTER_WING_SPEED = 9;     // radians per second of a bird's wing flap
+export const MONSTER_WORM_WAVE_SPEED = 5; // radians per second of the worm's crawl wave
+export const MONSTER_SPIN_SPEED = 1.1;   // radians per second the sun's rays roll
+export const MONSTER_TYPES = [
+  [ // World 0, Print Shop
+    { id: 'scissors', w: 58, h: 46, flying: false, speedMult: 1.0, weight: 3 },
+    { id: 'eraser',   w: 56, h: 38, flying: true,  speedMult: 1.1, weight: 2 },
+  ],
+  [ // World 1, The Garden
+    { id: 'worm',    w: 64, h: 30, flying: false, speedMult: 0.9, weight: 2 },
+    { id: 'robin',   w: 58, h: 42, flying: true,  speedMult: 1.2, weight: 3 },
+    { id: 'bluejay', w: 62, h: 44, flying: true,  speedMult: 1.4, weight: 2 },
+  ],
+  [ // World 2, Midnight Sky
+    { id: 'sun',          w: 64, h: 64, flying: false, speedMult: 0.85, weight: 3 },
+    { id: 'shootingstar', w: 68, h: 34, flying: true,  speedMult: 1.8, weight: 2 },
+  ],
+];
 export const BASE_MONSTERS_PER_PANEL = 2; // quota base added to the current panel number
 export const SPAWN_INTERVAL = 2.0;     // seconds between monster spawns at panel 1
 export const SPAWN_PANEL_MULTIPLIER = 0.25; // per-panel factor that raises spawn rate (interval / multiplier)
@@ -115,8 +141,17 @@ export const COLOR_DEATH = '#C4342A';       // hero's body and banner ink once t
 export const COLOR_PAPER = '#F2E5C4';       // aged cream paper
 export const COLOR_INK = '#242125';         // almost-black ink outline
 export const COLOR_PLAYER = '#E94B35';      // the hero's vermilion body
-export const COLOR_EYE = '#F2E5C4';         // the hero's aged-cream eye and monster hit flash
-export const COLOR_MONSTER = '#242125';     // ground-crawling ink rectangle
+export const COLOR_EYE = '#F2E5C4';         // the hero's and monsters' cream eyes, and the monster hit flash
+// --- Monster colours (flat comic fills; every enemy also gets the chunky COLOR_INK outline) ---
+export const MONSTER_COLORS = {
+  scissors:     { body: '#B9BEC4', accent: '#E9B949' }, // silver blades, mustard handles
+  eraser:       { body: '#E94B35', accent: '#F2E5C4' }, // vermilion block, cream sleeve and streaks
+  worm:         { body: '#E58AA0', accent: '#C86D51' }, // garden pink worm
+  robin:        { body: '#3B7EA1', accent: '#E94B35' }, // robin blue-grey with a red breast
+  bluejay:      { body: '#4C6FBF', accent: '#FFF4D2' }, // jay blue with a cream belly
+  sun:          { body: '#F7B32B', accent: '#E94B35' }, // fiery gold sun
+  shootingstar: { body: '#FFF4D2', accent: '#F7B32B' }, // lunar cream star, gold tail
+};
 export const COLOR_GROUND = '#242125';      // ground line ink
 
 // --- Worlds / player costumes ---
