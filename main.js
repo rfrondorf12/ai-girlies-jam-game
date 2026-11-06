@@ -18,6 +18,7 @@ import {
   COLOR_PAPER, COLOR_INK, COLOR_PLAYER, COLOR_EYE, COLOR_MONSTER, COLOR_GROUND,
   COLOR_DEATH, PANEL_FLASH_COLOR,
   WORLD_COUNT, WORLD_PAPER, WORLD_PLAYER_FILL, WORLD_PLAYER_EYE,
+  WORLD_SKY_TOP, WORLD_SKY_BOTTOM, WORLD_PLATFORM_FILL, WORLD_PLATFORM_TOP, HALFTONE_OPACITY,
   AUDIO_ENABLED, AUDIO_MASTER_VOLUME,
   SFX_JUMP_VOLUME, SFX_JUMP_DURATION, SFX_JUMP_BASE_FREQ,
   SFX_SLASH_VOLUME, SFX_SLASH_DURATION, SFX_SLASH_BASE_FREQ,
@@ -29,6 +30,21 @@ import {
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
+
+// A reusable comic halftone dot pattern created once at startup.
+const halftoneCanvas = document.createElement('canvas');
+halftoneCanvas.width = 32;
+halftoneCanvas.height = 32;
+const hctx = halftoneCanvas.getContext('2d');
+hctx.fillStyle = COLOR_INK;
+for (let y = 4; y < 32; y += 8) {
+  for (let x = 4; x < 32; x += 8) {
+    hctx.beginPath();
+    hctx.arc(x, y, 1.8, 0, Math.PI * 2);
+    hctx.fill();
+  }
+}
+const halftonePattern = ctx.createPattern(halftoneCanvas, 'repeat');
 
 // ---------------------------------------------------------------------------
 // State
@@ -481,9 +497,101 @@ function roundedPath(points, radius) {
   ctx.closePath();
 }
 
+function drawSky() {
+  const left = PANEL_MARGIN;
+  const right = PLAYFIELD_W - PANEL_MARGIN;
+  const top = PANEL_MARGIN;
+  const bottom = GROUND_Y;
+  const grad = ctx.createLinearGradient(0, top, 0, bottom);
+  grad.addColorStop(0, WORLD_SKY_TOP[world]);
+  grad.addColorStop(1, WORLD_SKY_BOTTOM[world]);
+  ctx.fillStyle = grad;
+  ctx.fillRect(left, top, right - left, bottom - top);
+}
+
+function drawCityscape() {
+  ctx.save();
+  ctx.globalAlpha = 0.22;
+  ctx.fillStyle = COLOR_INK;
+  const left = PANEL_MARGIN;
+  const right = PLAYFIELD_W - PANEL_MARGIN;
+  const bottom = GROUND_Y;
+  // Distant buildings.
+  const buildings = [
+    { x: left + 40, w: 60, h: 90 },
+    { x: left + 110, w: 45, h: 130 },
+    { x: left + 170, w: 70, h: 70 },
+    { x: right - 220, w: 55, h: 110 },
+    { x: right - 150, w: 80, h: 80 },
+    { x: right - 80, w: 50, h: 140 },
+  ];
+  for (const b of buildings) {
+    ctx.fillRect(b.x, bottom - b.h, b.w, b.h);
+  }
+  // Bridge arches.
+  ctx.beginPath();
+  const archW = 130;
+  const archCount = 4;
+  const startX = left + (right - left - archCount * archW) / 2;
+  for (let i = 0; i < archCount; i++) {
+    const ax = startX + i * archW + archW / 2;
+    ctx.moveTo(ax - archW * 0.4, bottom);
+    ctx.arc(ax, bottom, archW * 0.4, Math.PI, 0);
+    ctx.lineTo(ax + archW * 0.4, bottom - 18);
+    ctx.lineTo(ax - archW * 0.4, bottom - 18);
+    ctx.closePath();
+  }
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawGroundPlatform() {
+  const left = PANEL_MARGIN;
+  const right = PLAYFIELD_W - PANEL_MARGIN;
+  const top = GROUND_Y;
+  const bottom = GROUND_Y + 72;
+
+  ctx.fillStyle = WORLD_PLATFORM_FILL[world];
+  ctx.fillRect(left, top, right - left, bottom - top);
+
+  // Mustard top trim.
+  ctx.fillStyle = WORLD_PLATFORM_TOP[world];
+  ctx.fillRect(left, top, right - left, 10);
+
+  // Arch cutouts along the bottom edge.
+  ctx.fillStyle = currentPaper;
+  const archCount = 7;
+  const archW = (right - left) / archCount;
+  for (let i = 0; i < archCount; i++) {
+    const cx = left + archW * (i + 0.5);
+    ctx.beginPath();
+    ctx.arc(cx, bottom, archW * 0.32, Math.PI, 0);
+    ctx.lineTo(cx + archW * 0.32, bottom);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Ink outline.
+  ctx.lineWidth = OUTLINE_WIDTH;
+  ctx.strokeStyle = COLOR_INK;
+  ctx.strokeRect(left, top, right - left, bottom - top);
+}
+
+function drawHalftone() {
+  ctx.save();
+  ctx.fillStyle = halftonePattern;
+  ctx.globalAlpha = HALFTONE_OPACITY;
+  ctx.fillRect(PANEL_MARGIN, PANEL_MARGIN, PLAYFIELD_W - PANEL_MARGIN * 2, PLAYFIELD_H - PANEL_MARGIN * 2);
+  ctx.restore();
+}
+
 function drawPanel() {
   ctx.fillStyle = currentPaper;
   ctx.fillRect(0, 0, PLAYFIELD_W, PLAYFIELD_H);
+
+  drawSky();
+  drawCityscape();
+  drawGroundPlatform();
 
   // Minimal inking flash while a panel clear is being celebrated.
   if (panelClearTimer > 0) {
@@ -494,12 +602,11 @@ function drawPanel() {
     ctx.globalAlpha = 1;
   }
 
+  drawHalftone();
+
   ctx.lineWidth = OUTLINE_WIDTH;
   ctx.strokeStyle = COLOR_INK;
   ctx.strokeRect(PANEL_MARGIN, PANEL_MARGIN, PLAYFIELD_W - PANEL_MARGIN * 2, PLAYFIELD_H - PANEL_MARGIN * 2);
-
-  ctx.fillStyle = COLOR_GROUND;
-  ctx.fillRect(PANEL_MARGIN, GROUND_Y, PLAYFIELD_W - PANEL_MARGIN * 2, GROUND_THICKNESS);
 }
 
 function drawMonsters() {

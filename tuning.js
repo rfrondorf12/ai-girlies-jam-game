@@ -126,3 +126,10 @@ export const WORLD_COUNT = 3;
 export const WORLD_PAPER = ['#F2E5C4', '#F2E5C4', '#F2E5C4']; // keep aged-cream paper across worlds
 export const WORLD_PLAYER_FILL = ['#242125', '#E94B35', '#E98B35'];
 export const WORLD_PLAYER_EYE = ['#F2E5C4', '#F2E5C4', '#E9B949'];
+
+// --- World environment styling ---
+export const WORLD_SKY_TOP = ['#F2E5C4', '#D8E8E0', '#18233C'];
+export const WORLD_SKY_BOTTOM = ['#E9AFA3', '#A8D5BA', '#4A5B8A'];
+export const WORLD_PLATFORM_FILL = ['#C44B5A', '#5A8A3A', '#5A4A8A'];
+export const WORLD_PLATFORM_TOP = ['#E9B949', '#E9B949', '#E9B949'];
+export const HALFTONE_OPACITY = 0.18;
