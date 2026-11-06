@@ -1,0 +1,2 @@
+# Showcase tests (Playwright, headless Chromium)
+Serve the showcase folder on port 8137 (`python3 -m http.server 8137 --bind 127.0.0.1`), then `npm install` here and run e.g. `node tsc2.mjs`, `node tcol.mjs` (collision), `node tdbg.mjs` (debug colliders + FPS panel). Screenshots go to `./out/` (create it first). Scripts use `/usr/bin/google-chrome` with SwiftShader; change `executablePath` if your Chrome lives elsewhere. Software rendering FPS is not representative of real GPUs.

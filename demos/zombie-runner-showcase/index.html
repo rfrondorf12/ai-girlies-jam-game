@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Zombie Runner</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #111; }
+    #file-warning { position: fixed; inset: 0; display: grid; place-items: center; padding: 2rem;
+      color: #fff; background: #111; font: 18px/1.5 system-ui, sans-serif; text-align: center; }
+    #file-warning[hidden] { display: none; }
+    code { background: #333; padding: 0.1em 0.4em; border-radius: 4px; }
+    @import url('https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@500;800&display=swap');
+    #hud{position:fixed;top:16px;left:20px;color:#fff;font:800 16px Rubik,system-ui;letter-spacing:.06em;text-shadow:0 2px 6px #0008;pointer-events:none}
+    #hud .dist{font:48px/1 Bungee,system-ui;text-shadow:0 0 14px #ff7a59aa,0 3px 0 #2a1238}#hud .dist small{font-size:20px;margin-left:4px;opacity:.8}
+    #hud .pill{display:inline-block;margin-top:6px;padding:3px 10px;border-radius:99px;background:#ff7a59;color:#2a1238;font-size:13px}
+    #hud .spd{width:140px;height:6px;margin-top:8px;border-radius:9px;background:#ffffff26;overflow:hidden}#hud .spd i{display:block;height:100%;background:linear-gradient(90deg,#ffd27a,#ff4a6a)}
+    #best{position:fixed;top:18px;right:22px;color:#ffe3c0;font:800 15px Rubik,system-ui;letter-spacing:.1em;text-shadow:0 2px 6px #000a;pointer-events:none}
+    #msg{position:fixed;inset:0;display:grid;place-items:center;align-content:start;padding-top:5vh;color:#fff;text-align:center;pointer-events:none;font-family:Rubik,system-ui}
+    #msg .title{display:flex;flex-direction:column;font:clamp(48px,9vw,110px)/.9 Bungee,system-ui;color:#ffe3c0;text-shadow:0 0 30px #ff4a6a88,0 6px 0 #6a1f3a,0 10px 18px #000a;animation:bob 3s ease-in-out infinite}
+    #msg .title span:last-child{color:#b6ff6a;text-shadow:0 0 30px #7aff4a66,0 6px 0 #1f4a2a,0 10px 18px #000a;animation:flick 4s infinite}
+    #msg .press{margin-top:26px;font:800 20px Rubik;letter-spacing:.2em;text-transform:uppercase;animation:pulse 1.2s ease-in-out infinite}
+    #msg .keys{margin-top:10px;font:500 15px Rubik;opacity:.75;letter-spacing:.06em}
+    #msg .lvl{font:72px Bungee;color:#ffd27a;text-shadow:0 0 24px #ff7a59,0 5px 0 #6a1f3a;animation:pop .5s cubic-bezier(.2,1.6,.4,1)}#msg .lvlsub{font:800 18px Rubik;letter-spacing:.25em;text-transform:uppercase;margin-top:6px}
+    #msg .over{padding:26px 46px;border-radius:22px;background:#1a0f2ecc;box-shadow:0 0 0 3px #ff4a6a,0 20px 60px #000a;animation:pop .45s cubic-bezier(.2,1.6,.4,1) .25s both}
+    #msg .ot{font:64px Bungee;color:#ff4a6a;text-shadow:0 5px 0 #4a0f22;animation:shake .4s .3s}
+    #msg .os{display:flex;gap:22px;justify-content:center;margin-top:10px;font:800 18px Rubik;letter-spacing:.08em}#msg .os span:first-child{color:#ffd27a}
+    @keyframes bob{50%{transform:translateY(-10px) rotate(-1deg)}}@keyframes pulse{50%{opacity:.35}}@keyframes flick{0%,92%,100%{opacity:1}94%{opacity:.4}96%{opacity:1}97%{opacity:.6}}
+    @keyframes pop{from{transform:scale(.4);opacity:0}}@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+    #fps{position:fixed;left:20px;bottom:16px;padding:8px 12px;border-radius:10px;background:#0b0716cc;color:#c8ffb0;font:12px/1.5 ui-monospace,Menlo,monospace;pointer-events:none;box-shadow:0 0 0 1px #c8ffb044}#fps b{font-size:18px;color:#fff}
+    #dbg{position:fixed;right:20px;bottom:16px;max-width:46vw;padding:8px 12px;border-radius:10px;background:#0b0716cc;color:#fff;font:12px/1.6 ui-monospace,Menlo,monospace;pointer-events:none;text-align:right}
+  </style>
+  <!-- three.js comes from a CDN, pinned to one version. No install needed. -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="hud"></div><div id="best"></div><div id="msg"></div>
+  <div id="file-warning" hidden>
+    <p>This game needs a local server.<br>
+      In this folder run <code>python3 -m http.server 8000 --bind 127.0.0.1</code><br>
+      (Windows: <code>py -m http.server 8000 --bind 127.0.0.1</code>)<br>
+      then open <a href="http://localhost:8000" style="color:#8cf">http://localhost:8000</a></p>
+  </div>
+  <script>
+    // Browsers block game code opened straight from a file. Say so instead of showing a blank page.
+    if (location.protocol === 'file:') document.getElementById('file-warning').hidden = false;
+  </script>
+  <div style="position:fixed;left:0;right:0;bottom:6px;text-align:center;color:#fff9;font:12px/1.4 system-ui,sans-serif;pointer-events:none">Showcase of one finished card. Not a template: your game is your own.</div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
