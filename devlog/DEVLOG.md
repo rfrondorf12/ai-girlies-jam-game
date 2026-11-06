@@ -38,6 +38,18 @@ Format for each playtest (after M2 and after M3):
 - **Saw:** Black fill, and we can't read it.
 - **Decided, and why (KR):** Fits our retro game vibe.
 
+### 15:59: Body font, weight, and colors
+- **Changed:** Body font changed, with weight and colors adjusted. Ka Blam stays on headings.
+- **Expected:** Fonts more legible and colorful, like a comic book.
+- **Saw:** The text stayed the same. Neither happened.
+- **Decided, and why (KR):** The bigger display font was hard to read.
+
+### 15:59: Stylized obstacles instead of squares
+- **Changed:** Claude first made the obstacles squares. We changed them to flying scissors and stars.
+- **Expected:** Didn't predict.
+- **Saw:** Not said yet.
+- **Decided, and why (VR, RF):** Stylized obstacles add to the style and interest of the gameplay.
+
 ## Reflection
 
 *At the end: What did you decide that Claude didn't? What did you reject from Claude, and why? What would you do with another jam session?*
