@@ -110,18 +110,19 @@ export const SFX_GAMEOVER_VOLUME = 0.4;      // loudness of the run-over tone
 export const SFX_GAMEOVER_DURATION = 0.6;    // length of the descending tone in seconds
 export const SFX_GAMEOVER_BASE_FREQ = 440;   // Hz the game-over tone starts at, sliding down from there
 
-// --- Colours ---
+// --- Colours (from the Lucid Ink visual-system reference) ---
 export const COLOR_DEATH = '#C4342A';       // hero's body and banner ink once the run has ended
-export const COLOR_PAPER = '#F4EBD9';       // warm newsprint page
-export const COLOR_INK = '#1E1B1E';         // comic ink outline
-export const COLOR_PLAYER = '#E94B35';      // the hero's red body
-export const COLOR_EYE = '#FFF4D2';         // the hero's cream eye and monster hit flash
-export const COLOR_MONSTER = '#1E1B1E';     // ground-crawling ink rectangle
-export const COLOR_GROUND = '#1E1B1E';      // ground line ink
+export const COLOR_PAPER = '#F2E5C4';       // aged cream paper
+export const COLOR_INK = '#242125';         // almost-black ink outline
+export const COLOR_PLAYER = '#E94B35';      // the hero's vermilion body
+export const COLOR_EYE = '#F2E5C4';         // the hero's aged-cream eye and monster hit flash
+export const COLOR_MONSTER = '#242125';     // ground-crawling ink rectangle
+export const COLOR_GROUND = '#242125';      // ground line ink
 
 // --- Worlds / player costumes ---
-// 0 = Print Shop (black ink drop), 1 = Garden (pink worm), 2 = Midnight (pale crescent)
+// World themes from SCOPE map to reference roster shapes:
+// 0 = Print Shop / Ink Drop ("Inky"), 1 = Garden / Worm ("Squiggle"), 2 = Midnight / Crescent Moon
 export const WORLD_COUNT = 3;
-export const WORLD_PAPER = ['#F4EBD9', '#EBD9C8', '#3A4A6E']; // warm newsprint, garden soil, midnight slate
-export const WORLD_PLAYER_FILL = ['#1E1B1E', '#E88B9A', '#FFF4D2'];
-export const WORLD_PLAYER_EYE = ['#FFF4D2', '#FFF4D2', '#1E1B1E'];
+export const WORLD_PAPER = ['#F2E5C4', '#F2E5C4', '#F2E5C4']; // keep aged-cream paper across worlds
+export const WORLD_PLAYER_FILL = ['#242125', '#E94B35', '#E98B35'];
+export const WORLD_PLAYER_EYE = ['#F2E5C4', '#F2E5C4', '#E9B949'];

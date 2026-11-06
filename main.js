@@ -520,33 +520,72 @@ function drawMonsters() {
 
 function drawPlayerShape(w, h) {
   if (world === 0) {
-    // Print Shop: an uneven black ink drop, point forward.
-    roundedPath([
-      { x: -w * 0.35, y: -h },
-      { x: w * 0.55, y: -h * 0.5 },
-      { x: -w * 0.45, y: 0 },
-      { x: -w * 0.55, y: -h * 0.5 },
-    ], Math.min(w, h) * 0.38);
-  } else if (world === 1) {
-    // Garden: a wiggly pink worm loop.
-    const r = Math.min(w, h) * 0.28;
+    // Print Shop: Inky — a black teardrop with the point facing forward.
+    const cy = -h / 2;
     ctx.beginPath();
-    ctx.moveTo(-w * 0.45, -h * 0.7);
-    ctx.quadraticCurveTo(-w * 0.1, -h * 1.05, w * 0.25, -h * 0.7);
-    ctx.quadraticCurveTo(w * 0.55, -h * 0.45, w * 0.35, -h * 0.2);
-    ctx.quadraticCurveTo(w * 0.1, 0.05, -w * 0.25, -h * 0.25);
-    ctx.quadraticCurveTo(-w * 0.55, -h * 0.45, -w * 0.45, -h * 0.7);
+    ctx.moveTo(w * 0.5, cy);
+    ctx.bezierCurveTo(w * 0.5, cy - h * 0.55, -w * 0.45, cy - h * 0.55, -w * 0.45, cy);
+    ctx.bezierCurveTo(-w * 0.45, cy + h * 0.35, w * 0.1, cy + h * 0.5, w * 0.5, cy);
+    ctx.closePath();
+  } else if (world === 1) {
+    // Garden: Squiggle — a red wavy worm ribbon.
+    const topY = -h * 0.75;
+    const botY = -h * 0.25;
+    const amp = h * 0.18;
+    const seg = 24;
+    ctx.beginPath();
+    for (let i = 0; i <= seg; i++) {
+      const t = i / seg;
+      const x = -w * 0.5 + t * w;
+      const y = topY + Math.sin(t * Math.PI * 3) * amp;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    for (let i = seg; i >= 0; i--) {
+      const t = i / seg;
+      const x = -w * 0.5 + t * w;
+      const y = botY + Math.sin(t * Math.PI * 3) * amp;
+      ctx.lineTo(x, y);
+    }
     ctx.closePath();
   } else {
-    // Midnight: a crescent moon pointing forward.
+    // Midnight: Crescent — an orange crescent moon opening forward.
     const cy = -h / 2;
     const r = h * 0.58;
-    const outerX = -w * 0.05;
-    const innerX = outerX + w * 0.28;
+    const outerX = -w * 0.1;
+    const innerX = outerX + w * 0.32;
     ctx.beginPath();
-    ctx.arc(outerX, cy, r, -Math.PI * 0.45, Math.PI * 0.45);
-    ctx.arc(innerX, cy, r * 0.78, Math.PI * 0.4, -Math.PI * 0.4, true);
+    ctx.arc(outerX, cy, r, -Math.PI * 0.5, Math.PI * 0.5);
+    ctx.arc(innerX, cy, r * 0.78, Math.PI * 0.45, -Math.PI * 0.45, true);
     ctx.closePath();
+  }
+}
+
+function drawPlayerEyes(w, h) {
+  ctx.fillStyle = WORLD_PLAYER_EYE[world];
+  ctx.strokeStyle = COLOR_INK;
+  ctx.lineWidth = OUTLINE_WIDTH * 0.75;
+  if (world === 0) {
+    // Inky: two cream eye holes near the top of the drop.
+    ctx.beginPath();
+    ctx.ellipse(-w * 0.08, -h * 0.62, w * 0.1, h * 0.13, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(w * 0.12, -h * 0.58, w * 0.09, h * 0.12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  } else if (world === 1) {
+    // Squiggle: one big cream eye at the front of the worm.
+    ctx.beginPath();
+    ctx.ellipse(w * 0.28, -h * 0.48, w * 0.14, h * 0.18, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    // Crescent: one yellow eye sitting inside the moon bowl.
+    ctx.beginPath();
+    ctx.arc(-w * 0.02, -h * 0.5, w * 0.13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
   }
 }
 
@@ -565,12 +604,7 @@ function drawPlayer() {
   ctx.fill();
   ctx.stroke();
 
-  // One big oval eye in the world-specific eye colour.
-  ctx.beginPath();
-  ctx.ellipse(w * EYE_OFFSET_X, h * EYE_OFFSET_Y, w * EYE_RADIUS_X, h * EYE_RADIUS_Y, 0, 0, Math.PI * 2);
-  ctx.fillStyle = WORLD_PLAYER_EYE[world];
-  ctx.fill();
-  ctx.stroke();
+  drawPlayerEyes(w, h);
   ctx.restore();
 }
 
