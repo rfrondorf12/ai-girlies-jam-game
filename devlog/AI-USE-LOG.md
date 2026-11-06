@@ -12,7 +12,8 @@ Add one row per use (newest first). Leave blank cells as `—` if they do not ap
 
 | Time | Tool / model | What you asked (prompt or short summary) | What came back | Kept, changed, or rejected (why) | Game asset? |
 |------|--------------|------------------------------------------|----------------|-----------------------------------|-------------|
-| | | | | | |
+| 12:43 | Imra (Gemini 3.8 Flash) | Populate context files: CONCEPT, LOOK, MECHANIC, SCOPE, STARTERS | Detailed context kit files defining comic runner loop, 3 worlds, controls, audio plan, scope boundaries, and Card 2 selection | Kept; fully fleshed out context folder for Claude Code build terminal | No (documentation) |
+| 12:30 | Imra (Gemini 3.8 Flash) | Ideation scoping: turn brainstorming notes into shippable jam mechanics, 3 world concepts, combat rules, and build plan | 8-panel comic action runner design, 3 contrasting worlds (Ink Drop, Worm, Crescent Moon), stomp/slash combat, and scoped BUILD-PLAN | Kept; finalized scope to protect 4:00 PM deadline and populated BUILD-PLAN.md | No (planning) |
 
 ## Worked example
 
