@@ -18,7 +18,7 @@ import {
   COLOR_PAPER, COLOR_INK, COLOR_PLAYER, COLOR_EYE, COLOR_MONSTER, COLOR_GROUND,
   COLOR_DEATH, PANEL_FLASH_COLOR,
   WORLD_COUNT, WORLD_PAPER, WORLD_PLAYER_FILL, WORLD_PLAYER_EYE,
-  WORLD_SKY_TOP, WORLD_SKY_BOTTOM, WORLD_PLATFORM_FILL, WORLD_PLATFORM_TOP, HALFTONE_OPACITY,
+  WORLD_SKY_TOP, WORLD_SKY_BOTTOM, WORLD_PLATFORM_FILL, WORLD_PLATFORM_TOP, HALFTONE_OPACITY, STAGES_PER_PANEL,
   AUDIO_ENABLED, AUDIO_MASTER_VOLUME,
   SFX_JUMP_VOLUME, SFX_JUMP_DURATION, SFX_JUMP_BASE_FREQ,
   SFX_SLASH_VOLUME, SFX_SLASH_DURATION, SFX_SLASH_BASE_FREQ,
@@ -45,6 +45,22 @@ for (let y = 4; y < 32; y += 8) {
   }
 }
 const halftonePattern = ctx.createPattern(halftoneCanvas, 'repeat');
+
+// A rough paper grain pattern.
+const grainCanvas = document.createElement('canvas');
+grainCanvas.width = 64;
+grainCanvas.height = 64;
+const gctx = grainCanvas.getContext('2d');
+gctx.fillStyle = COLOR_INK;
+for (let i = 0; i < 200; i++) {
+  const x = Math.random() * 64;
+  const y = Math.random() * 64;
+  const r = Math.random() * 0.6 + 0.2;
+  gctx.beginPath();
+  gctx.arc(x, y, r, 0, Math.PI * 2);
+  gctx.fill();
+}
+const grainPattern = ctx.createPattern(grainCanvas, 'repeat');
 
 // ---------------------------------------------------------------------------
 // State
@@ -497,59 +513,171 @@ function roundedPath(points, radius) {
   ctx.closePath();
 }
 
-function drawSky() {
+function getStage() {
+  return STAGES_PER_PANEL[Math.max(0, Math.min(panel - 1, STAGES_PER_PANEL.length - 1))];
+}
+
+function drawSky(stage) {
   const left = PANEL_MARGIN;
   const right = PLAYFIELD_W - PANEL_MARGIN;
   const top = PANEL_MARGIN;
   const bottom = GROUND_Y;
+
+  if (stage === 0) {
+    // Graphite wash.
+    ctx.fillStyle = '#B8B0A0';
+    ctx.globalAlpha = 0.22;
+    ctx.fillRect(left, top, right - left, bottom - top);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = '#8A8A8A';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(left, bottom);
+    ctx.lineTo(right, bottom);
+    ctx.stroke();
+    return;
+  }
+
   const grad = ctx.createLinearGradient(0, top, 0, bottom);
   grad.addColorStop(0, WORLD_SKY_TOP[world]);
   grad.addColorStop(1, WORLD_SKY_BOTTOM[world]);
   ctx.fillStyle = grad;
   ctx.fillRect(left, top, right - left, bottom - top);
+
+  if (stage === 3) {
+    // Neon horizon glow.
+    ctx.fillStyle = '#FFF4D2';
+    ctx.globalAlpha = 0.18;
+    ctx.fillRect(left, bottom - 70, right - left, 70);
+    ctx.globalAlpha = 1;
+  }
 }
 
-function drawCityscape() {
+function drawClouds(stage) {
+  if (stage < 1) return;
   ctx.save();
-  ctx.globalAlpha = 0.22;
-  ctx.fillStyle = COLOR_INK;
+  ctx.globalAlpha = stage === 1 ? 0.35 : 0.75;
+  ctx.fillStyle = stage === 3 ? '#FFF4D2' : currentPaper;
+  ctx.strokeStyle = COLOR_INK;
+  ctx.lineWidth = OUTLINE_WIDTH * 0.75;
+  const clouds = [
+    { x: PANEL_MARGIN + 90, y: 95, s: 1 },
+    { x: PLAYFIELD_W - PANEL_MARGIN - 130, y: 80, s: 0.85 },
+    { x: PLAYFIELD_W / 2 + 60, y: 115, s: 0.65 },
+  ];
+  for (const c of clouds) {
+    ctx.beginPath();
+    ctx.arc(c.x - 22 * c.s, c.y, 16 * c.s, Math.PI, 0);
+    ctx.arc(c.x + 4 * c.s, c.y - 12 * c.s, 22 * c.s, Math.PI, 0);
+    ctx.arc(c.x + 32 * c.s, c.y, 18 * c.s, Math.PI, 0);
+    ctx.lineTo(c.x + 32 * c.s, c.y + 10 * c.s);
+    ctx.lineTo(c.x - 22 * c.s, c.y + 10 * c.s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawCityscape(stage) {
   const left = PANEL_MARGIN;
   const right = PLAYFIELD_W - PANEL_MARGIN;
   const bottom = GROUND_Y;
-  // Distant buildings.
+
+  ctx.save();
+  if (stage === 0) {
+    // Pencil sketch: outlines and cross-hatching only.
+    ctx.strokeStyle = '#8A8A8A';
+    ctx.lineWidth = 1.2;
+    ctx.globalAlpha = 0.65;
+  } else {
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = stage === 3 ? WORLD_PLATFORM_FILL[world] : COLOR_INK;
+  }
+
+  // Buildings.
   const buildings = [
-    { x: left + 40, w: 60, h: 90 },
-    { x: left + 110, w: 45, h: 130 },
-    { x: left + 170, w: 70, h: 70 },
-    { x: right - 220, w: 55, h: 110 },
-    { x: right - 150, w: 80, h: 80 },
-    { x: right - 80, w: 50, h: 140 },
+    { x: left + 30, w: 55, h: 100, windows: 3 },
+    { x: left + 100, w: 40, h: 140, windows: 4 },
+    { x: left + 155, w: 65, h: 80, windows: 3 },
+    { x: right - 230, w: 50, h: 120, windows: 4 },
+    { x: right - 165, w: 70, h: 95, windows: 3 },
+    { x: right - 85, w: 45, h: 155, windows: 5 },
   ];
   for (const b of buildings) {
-    ctx.fillRect(b.x, bottom - b.h, b.w, b.h);
+    if (stage === 0) {
+      ctx.strokeRect(b.x, bottom - b.h, b.w, b.h);
+      // Cross-hatch.
+      ctx.beginPath();
+      for (let i = 0; i < b.h; i += 14) {
+        ctx.moveTo(b.x, bottom - b.h + i);
+        ctx.lineTo(b.x + b.w, bottom - b.h + i + 10);
+      }
+      ctx.stroke();
+    } else {
+      ctx.fillRect(b.x, bottom - b.h, b.w, b.h);
+      ctx.strokeRect(b.x, bottom - b.h, b.w, b.h);
+      // Windows.
+      if (stage >= 2) {
+        ctx.fillStyle = stage === 3 ? '#FFF4D2' : currentPaper;
+        const cols = 2;
+        const rows = b.windows;
+        const winW = b.w * 0.28;
+        const winH = (b.h * 0.65) / rows;
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const wx = b.x + b.w * 0.18 + c * (winW + b.w * 0.12);
+            const wy = bottom - b.h + b.h * 0.15 + r * (winH + b.h * 0.05);
+            ctx.fillRect(wx, wy, winW, winH * 0.7);
+          }
+        }
+        ctx.fillStyle = stage === 3 ? WORLD_PLATFORM_FILL[world] : COLOR_INK;
+      }
+    }
   }
-  // Bridge arches.
+
+  // Bridge with arches and cables.
   ctx.beginPath();
-  const archW = 130;
+  const archW = 120;
   const archCount = 4;
   const startX = left + (right - left - archCount * archW) / 2;
   for (let i = 0; i < archCount; i++) {
     const ax = startX + i * archW + archW / 2;
-    ctx.moveTo(ax - archW * 0.4, bottom);
-    ctx.arc(ax, bottom, archW * 0.4, Math.PI, 0);
-    ctx.lineTo(ax + archW * 0.4, bottom - 18);
-    ctx.lineTo(ax - archW * 0.4, bottom - 18);
+    ctx.moveTo(ax - archW * 0.38, bottom);
+    ctx.arc(ax, bottom, archW * 0.38, Math.PI, 0);
+    ctx.lineTo(ax + archW * 0.38, bottom - 22);
+    ctx.lineTo(ax - archW * 0.38, bottom - 22);
     ctx.closePath();
+    // Cables.
+    if (stage > 0) {
+      ctx.moveTo(ax - archW * 0.38, bottom - 22);
+      ctx.quadraticCurveTo(ax, bottom - 55, ax + archW * 0.38, bottom - 22);
+    }
   }
-  ctx.fill();
+  if (stage === 0) ctx.stroke(); else ctx.fill();
+  if (stage > 0) ctx.stroke();
   ctx.restore();
 }
 
-function drawGroundPlatform() {
+function drawGroundPlatform(stage) {
   const left = PANEL_MARGIN;
   const right = PLAYFIELD_W - PANEL_MARGIN;
   const top = GROUND_Y;
   const bottom = GROUND_Y + 72;
+
+  if (stage === 0) {
+    // Sketch: outline + hatch, no fill.
+    ctx.strokeStyle = '#8A8A8A';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(left, top, right - left, bottom - top);
+    ctx.beginPath();
+    for (let i = 0; i < right - left; i += 18) {
+      ctx.moveTo(left + i, top);
+      ctx.lineTo(left + i + 25, bottom);
+    }
+    ctx.stroke();
+    return;
+  }
 
   ctx.fillStyle = WORLD_PLATFORM_FILL[world];
   ctx.fillRect(left, top, right - left, bottom - top);
@@ -571,10 +699,39 @@ function drawGroundPlatform() {
     ctx.fill();
   }
 
+  // Brick courses.
+  if (stage >= 2) {
+    ctx.strokeStyle = stage === 3 ? '#FFF4D2' : COLOR_INK;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.25;
+    for (let y = top + 18; y < bottom; y += 14) {
+      ctx.beginPath();
+      ctx.moveTo(left, y);
+      ctx.lineTo(right, y);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
   // Ink outline.
   ctx.lineWidth = OUTLINE_WIDTH;
   ctx.strokeStyle = COLOR_INK;
   ctx.strokeRect(left, top, right - left, bottom - top);
+}
+
+function drawSketchOverlay(stage) {
+  if (stage >= 2) return;
+  ctx.save();
+  ctx.strokeStyle = '#8A8A8A';
+  ctx.lineWidth = 1;
+  ctx.globalAlpha = stage === 0 ? 0.22 : 0.1;
+  for (let i = -100; i < PLAYFIELD_W + 100; i += 28) {
+    ctx.beginPath();
+    ctx.moveTo(i, PANEL_MARGIN);
+    ctx.lineTo(i + 90, GROUND_Y);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function drawHalftone() {
@@ -585,13 +742,24 @@ function drawHalftone() {
   ctx.restore();
 }
 
+function drawPaperGrain() {
+  ctx.save();
+  ctx.fillStyle = grainPattern;
+  ctx.globalAlpha = 0.08;
+  ctx.fillRect(PANEL_MARGIN, PANEL_MARGIN, PLAYFIELD_W - PANEL_MARGIN * 2, PLAYFIELD_H - PANEL_MARGIN * 2);
+  ctx.restore();
+}
+
 function drawPanel() {
+  const stage = getStage();
+
   ctx.fillStyle = currentPaper;
   ctx.fillRect(0, 0, PLAYFIELD_W, PLAYFIELD_H);
 
-  drawSky();
-  drawCityscape();
-  drawGroundPlatform();
+  drawSky(stage);
+  drawClouds(stage);
+  drawCityscape(stage);
+  drawGroundPlatform(stage);
 
   // Minimal inking flash while a panel clear is being celebrated.
   if (panelClearTimer > 0) {
@@ -602,7 +770,9 @@ function drawPanel() {
     ctx.globalAlpha = 1;
   }
 
+  drawSketchOverlay(stage);
   drawHalftone();
+  drawPaperGrain();
 
   ctx.lineWidth = OUTLINE_WIDTH;
   ctx.strokeStyle = COLOR_INK;

@@ -133,3 +133,7 @@ export const WORLD_SKY_BOTTOM = ['#E9AFA3', '#A8D5BA', '#4A5B8A'];
 export const WORLD_PLATFORM_FILL = ['#C44B5A', '#5A8A3A', '#5A4A8A'];
 export const WORLD_PLATFORM_TOP = ['#E9B949', '#E9B949', '#E9B949'];
 export const HALFTONE_OPACITY = 0.18;
+
+// --- Comic progress stages (world draws in as the 8 panels advance) ---
+// stage 0 = graphite sketch, 1 = bold ink, 2 = halftone colour, 3 = neon completed panel
+export const STAGES_PER_PANEL = [0, 0, 1, 1, 2, 2, 3, 3];
