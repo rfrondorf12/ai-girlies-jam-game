@@ -17,7 +17,7 @@ import {
   CONTROLS_HINT, CONTROLS_HINT_SIZE, CONTROLS_HINT_DURATION, CONTROLS_HINT_MARGIN,
   COLOR_PAPER, COLOR_INK, COLOR_PLAYER, COLOR_EYE, COLOR_MONSTER, COLOR_GROUND,
   COLOR_DEATH, PANEL_FLASH_COLOR,
-  WORLD_COUNT, WORLD_PLAYER_FILL, WORLD_PLAYER_EYE,
+  WORLD_COUNT, WORLD_PAPER, WORLD_PLAYER_FILL, WORLD_PLAYER_EYE,
   AUDIO_ENABLED, AUDIO_MASTER_VOLUME,
   SFX_JUMP_VOLUME, SFX_JUMP_DURATION, SFX_JUMP_BASE_FREQ,
   SFX_SLASH_VOLUME, SFX_SLASH_DURATION, SFX_SLASH_BASE_FREQ,
@@ -47,6 +47,7 @@ let gameOver = false;         // run has ended: physics freezes, the panel keeps
 let victory = false;          // all 8 panels cleared
 let paused = false;           // true while the run is paused (P or Escape)
 let world = 0;                // current world theme, chosen per run
+let currentPaper = COLOR_PAPER; // paper colour for the current world
 let jumpQueued = false;       // a Space / ArrowUp / KeyW press waiting for update() to spend on a jump
 let slashQueued = false;      // a '/' press waiting for update() to spend on a swing
 let runTime = 0;              // seconds of active run, drives the temporary controls hint
@@ -86,6 +87,7 @@ function reset() {
   victory = false;
   paused = false;
   world = Math.floor(Math.random() * WORLD_COUNT);
+  currentPaper = WORLD_PAPER[world];
   jumpQueued = false;
   slashQueued = false;
   runTime = 0;
@@ -480,7 +482,7 @@ function roundedPath(points, radius) {
 }
 
 function drawPanel() {
-  ctx.fillStyle = COLOR_PAPER;
+  ctx.fillStyle = currentPaper;
   ctx.fillRect(0, 0, PLAYFIELD_W, PLAYFIELD_H);
 
   // Minimal inking flash while a panel clear is being celebrated.
@@ -518,20 +520,23 @@ function drawMonsters() {
 
 function drawPlayerShape(w, h) {
   if (world === 0) {
-    // Print Shop: The Missing Piece, a rounded wedge pointing forward.
+    // Print Shop: an uneven black ink drop, point forward.
     roundedPath([
-      { x: -w / 2, y: -h },
-      { x: w / 2, y: -h / 2 },
-      { x: -w / 2, y: 0 },
-    ], Math.min(w, h) * SHAPE_ROUND);
-  } else if (world === 1) {
-    // Garden: a soft pink worm capsule.
-    roundedPath([
-      { x: -w * 0.45, y: -h },
-      { x: w * 0.45, y: -h },
-      { x: w * 0.45, y: 0 },
+      { x: -w * 0.35, y: -h },
+      { x: w * 0.55, y: -h * 0.5 },
       { x: -w * 0.45, y: 0 },
-    ], Math.min(w, h) * 0.45);
+      { x: -w * 0.55, y: -h * 0.5 },
+    ], Math.min(w, h) * 0.38);
+  } else if (world === 1) {
+    // Garden: a wiggly pink worm loop.
+    const r = Math.min(w, h) * 0.28;
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.45, -h * 0.7);
+    ctx.quadraticCurveTo(-w * 0.1, -h * 1.05, w * 0.25, -h * 0.7);
+    ctx.quadraticCurveTo(w * 0.55, -h * 0.45, w * 0.35, -h * 0.2);
+    ctx.quadraticCurveTo(w * 0.1, 0.05, -w * 0.25, -h * 0.25);
+    ctx.quadraticCurveTo(-w * 0.55, -h * 0.45, -w * 0.45, -h * 0.7);
+    ctx.closePath();
   } else {
     // Midnight: a crescent moon pointing forward.
     const cy = -h / 2;
@@ -595,7 +600,7 @@ function drawScore() {
   const x = PANEL_MARGIN + 12;
   const y = PANEL_MARGIN + 8;
   ctx.strokeText(text, x, y);
-  ctx.fillStyle = COLOR_PAPER;
+  ctx.fillStyle = currentPaper;
   ctx.fillText(text, x, y);
   ctx.restore();
 }
@@ -611,7 +616,7 @@ function drawPanelCounter() {
   const x = PLAYFIELD_W - PANEL_MARGIN - 12;
   const y = PANEL_MARGIN + 10;
   ctx.strokeText(text, x, y);
-  ctx.fillStyle = COLOR_PAPER;
+  ctx.fillStyle = currentPaper;
   ctx.fillText(text, x, y);
   ctx.restore();
 }
@@ -630,7 +635,7 @@ function drawControlsHint() {
   const x = PANEL_MARGIN + CONTROLS_HINT_MARGIN;
   const y = PLAYFIELD_H - PANEL_MARGIN - CONTROLS_HINT_MARGIN;
   ctx.strokeText(CONTROLS_HINT, x, y);
-  ctx.fillStyle = COLOR_PAPER;
+  ctx.fillStyle = currentPaper;
   ctx.fillText(CONTROLS_HINT, x, y);
   ctx.restore();
 }
@@ -648,7 +653,7 @@ function drawPanelClear() {
   ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   const text = `PANEL ${panel} CLEARED!`;
   ctx.strokeText(text, cx, cy);
-  ctx.fillStyle = COLOR_PAPER;
+  ctx.fillStyle = currentPaper;
   ctx.fillText(text, cx, cy);
   ctx.restore();
 }
@@ -666,14 +671,14 @@ function drawGameOver() {
   ctx.font = `${GAME_OVER_FONT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   ctx.strokeText(GAME_OVER_TEXT, cx, GAME_OVER_BANNER_Y);
-  ctx.fillStyle = COLOR_PAPER;
+  ctx.fillStyle = currentPaper;
   ctx.fillText(GAME_OVER_TEXT, cx, GAME_OVER_BANNER_Y);
 
   ctx.font = `${GAME_OVER_HINT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   const hintY1 = GAME_OVER_BANNER_Y + GAME_OVER_HINT_GAP;
   ctx.strokeText(RESTART_HINT_LINE1, cx, hintY1);
-  ctx.fillStyle = COLOR_PAPER;
+  ctx.fillStyle = currentPaper;
   ctx.fillText(RESTART_HINT_LINE1, cx, hintY1);
   const hintY2 = hintY1 + GAME_OVER_HINT_SIZE + 8;
   ctx.strokeText(RESTART_HINT_LINE2, cx, hintY2);
@@ -693,7 +698,7 @@ function drawVictory() {
   ctx.font = `${VICTORY_FONT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   ctx.strokeText(VICTORY_TEXT, cx, GAME_OVER_BANNER_Y);
-  ctx.fillStyle = COLOR_PAPER;
+  ctx.fillStyle = currentPaper;
   ctx.fillText(VICTORY_TEXT, cx, GAME_OVER_BANNER_Y);
 
   ctx.font = `${GAME_OVER_HINT_SIZE}px ${FONT_STACK}`;
@@ -701,12 +706,12 @@ function drawVictory() {
   const scoreY = GAME_OVER_BANNER_Y + GAME_OVER_HINT_GAP;
   const scoreText = `FINAL SCORE ${score}`;
   ctx.strokeText(scoreText, cx, scoreY);
-  ctx.fillStyle = COLOR_PAPER;
+  ctx.fillStyle = currentPaper;
   ctx.fillText(scoreText, cx, scoreY);
 
   const hintY1 = scoreY + GAME_OVER_HINT_GAP;
   ctx.strokeText(VICTORY_HINT_LINE1, cx, hintY1);
-  ctx.fillStyle = COLOR_PAPER;
+  ctx.fillStyle = currentPaper;
   ctx.fillText(VICTORY_HINT_LINE1, cx, hintY1);
   const hintY2 = hintY1 + GAME_OVER_HINT_SIZE + 8;
   ctx.strokeText(VICTORY_HINT_LINE2, cx, hintY2);
@@ -727,7 +732,7 @@ function drawPaused() {
   ctx.font = `${PAUSED_FONT_SIZE}px ${FONT_STACK}`;
   ctx.lineWidth = TEXT_OUTLINE_WIDTH;
   ctx.strokeText(PAUSED_TEXT, cx, cy);
-  ctx.fillStyle = COLOR_PAPER;
+  ctx.fillStyle = currentPaper;
   ctx.fillText(PAUSED_TEXT, cx, cy);
 
   ctx.font = `${GAME_OVER_HINT_SIZE}px ${FONT_STACK}`;
@@ -739,7 +744,7 @@ function drawPaused() {
 
 function draw() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = COLOR_PAPER;
+  ctx.fillStyle = currentPaper;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.setTransform(view.scale, 0, 0, view.scale, view.x, view.y);
 

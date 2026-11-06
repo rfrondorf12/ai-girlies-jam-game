@@ -120,7 +120,8 @@ export const COLOR_MONSTER = '#1E1B1E';     // ground-crawling ink rectangle
 export const COLOR_GROUND = '#1E1B1E';      // ground line ink
 
 // --- Worlds / player costumes ---
+// 0 = Print Shop (black ink drop), 1 = Garden (pink worm), 2 = Midnight (pale crescent)
 export const WORLD_COUNT = 3;
-// 0 = Print Shop (red wedge / ink drop), 1 = Garden (pink worm), 2 = Midnight (cream crescent)
-export const WORLD_PLAYER_FILL = ['#E94B35', '#E88B9A', '#FFF4D2'];
+export const WORLD_PAPER = ['#F4EBD9', '#EBD9C8', '#3A4A6E']; // warm newsprint, garden soil, midnight slate
+export const WORLD_PLAYER_FILL = ['#1E1B1E', '#E88B9A', '#FFF4D2'];
 export const WORLD_PLAYER_EYE = ['#FFF4D2', '#FFF4D2', '#1E1B1E'];
