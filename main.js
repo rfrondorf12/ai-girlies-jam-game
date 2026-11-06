@@ -507,7 +507,8 @@ function update(dt) {
   }
 
   // --- side contact / overlap ---
-  // Any overlap with a live monster that wasn't a stomp ends the run.
+  // Any overlap with a live monster that wasn't a stomp ends the run. Flyers
+  // included: running under one is safe, touching it is not.
   for (const m of monsters) {
     if (m.dead) continue;
     const mLeft = m.x - m.w / 2;
@@ -869,7 +870,7 @@ function drawBirdMonster(m, w, h, colors, crest) {
   ctx.lineTo(hx - h * 0.42, hy + h * 0.02);
   ctx.lineTo(hx - h * 0.16, hy + h * 0.1);
   ctx.closePath();
-  paintMonster(m, colors, m.dead ? undefined : colors.beak);
+  paintMonster(m, colors, colors.beak);
   if (!m.dead) monsterEye(hx - h * 0.08, hy - h * 0.02, h * 0.07);
 }
 

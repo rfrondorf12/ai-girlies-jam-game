@@ -147,8 +147,8 @@ export const MONSTER_COLORS = {
   scissors:     { body: '#B9BEC4', accent: '#E9B949' }, // silver blades, mustard handles
   eraser:       { body: '#E94B35', accent: '#F2E5C4' }, // vermilion block, cream sleeve and streaks
   worm:         { body: '#E58AA0', accent: '#C86D51' }, // garden pink worm
-  robin:        { body: '#3B7EA1', accent: '#E94B35' }, // robin blue-grey with a red breast
-  bluejay:      { body: '#4C6FBF', accent: '#FFF4D2' }, // jay blue with a cream belly
+  robin:        { body: '#3B7EA1', accent: '#E94B35', beak: '#E9B949' }, // robin blue-grey with a red breast
+  bluejay:      { body: '#4C6FBF', accent: '#FFF4D2', beak: '#E9B949' }, // jay blue with a cream belly
   sun:          { body: '#F7B32B', accent: '#E94B35' }, // fiery gold sun
   shootingstar: { body: '#FFF4D2', accent: '#F7B32B' }, // lunar cream star, gold tail
 };
