@@ -29,7 +29,7 @@ Format for each playtest (after M2 and after M3):
 ### 13:48: Jump keys and double jump
 - **Changed:** Space, Up, and W all jump. Added a double jump: a second jump when the jump button is pressed again quickly.
 - **Expected:** A quick second press makes the second jump go twice as high as a single jump.
-- **Saw:** Double jump works well. Space, Up, and W all jump.
+- **Saw:** Double jump works well. The second jump went twice as high as the first. Space, Up, and W all jump.
 - **Decided, and why (RF):** Double jump makes the game more interactive and can help dodge monsters.
 
 ## Reflection
