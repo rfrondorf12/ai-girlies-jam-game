@@ -579,6 +579,201 @@ function drawClouds(stage) {
   ctx.restore();
 }
 
+function drawHills(stage) {
+  const left = PANEL_MARGIN;
+  const right = PLAYFIELD_W - PANEL_MARGIN;
+  const bottom = GROUND_Y - 35;
+
+  ctx.save();
+  if (stage === 0) {
+    ctx.strokeStyle = '#8A8A8A';
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.45;
+  } else {
+    ctx.globalAlpha = 0.55;
+    const fills = ['#D9B2A6', '#8FBC5A', '#2E3A5C'];
+    ctx.fillStyle = fills[world];
+  }
+
+  // Two slow rolling hill layers.
+  const hills = [
+    { y: bottom, amp: 28, freq: 0.006, shift: 0 },
+    { y: bottom - 12, amp: 20, freq: 0.009, shift: 120 },
+  ];
+  for (const hill of hills) {
+    ctx.beginPath();
+    ctx.moveTo(left, hill.y);
+    for (let x = left; x <= right; x += 20) {
+      const y = hill.y - Math.sin((x + hill.shift) * hill.freq) * hill.amp;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(right, PLAYFIELD_H);
+    ctx.lineTo(left, PLAYFIELD_H);
+    ctx.closePath();
+    if (stage === 0) ctx.stroke(); else ctx.fill();
+    if (stage > 0) ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawCelestialBody(stage) {
+  if (stage === 0) return;
+  ctx.save();
+  const cx = world === 2 ? PLAYFIELD_W - PANEL_MARGIN - 90 : PANEL_MARGIN + 70;
+  const cy = 95;
+  ctx.globalAlpha = stage === 1 ? 0.45 : 0.85;
+  if (world === 2) {
+    // Big cream crescent moon.
+    ctx.fillStyle = '#FFF4D2';
+    ctx.strokeStyle = COLOR_INK;
+    ctx.lineWidth = OUTLINE_WIDTH * 0.75;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 36, -Math.PI * 0.55, Math.PI * 0.55);
+    ctx.arc(cx + 16, cy, 28, Math.PI * 0.5, -Math.PI * 0.5, true);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    // Sun circle with radiating rays.
+    ctx.fillStyle = world === 0 ? '#F7B32B' : '#F7B32B';
+    ctx.strokeStyle = COLOR_INK;
+    ctx.lineWidth = OUTLINE_WIDTH * 0.75;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 30, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    if (stage >= 2) {
+      ctx.strokeStyle = world === 0 ? '#C4342A' : '#C86D51';
+      ctx.lineWidth = 3;
+      for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) {
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * 40, cy + Math.sin(a) * 40);
+        ctx.lineTo(cx + Math.cos(a) * 52, cy + Math.sin(a) * 52);
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.restore();
+}
+
+function drawPowerLines(stage) {
+  if (stage < 1) return;
+  ctx.save();
+  ctx.strokeStyle = COLOR_INK;
+  ctx.lineWidth = 1.2;
+  ctx.globalAlpha = stage === 1 ? 0.35 : 0.6;
+  const left = PANEL_MARGIN + 40;
+  const right = PLAYFIELD_W - PANEL_MARGIN - 40;
+  const y = 140;
+  const poles = [left + 30, left + 180, right - 220, right - 60];
+  for (const px of poles) {
+    ctx.beginPath();
+    ctx.moveTo(px, y);
+    ctx.lineTo(px, GROUND_Y - 80);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(px - 14, y);
+    ctx.lineTo(px + 14, y);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.moveTo(poles[0] - 14, y + 4);
+  for (const px of poles) ctx.lineTo(px, y + 4 + Math.sin(px * 0.05) * 3);
+  ctx.lineTo(poles[poles.length - 1] + 14, y + 4);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawWorldExtras(stage) {
+  if (stage < 1) return;
+  ctx.save();
+  ctx.globalAlpha = stage === 1 ? 0.4 : 0.9;
+  ctx.strokeStyle = COLOR_INK;
+  ctx.lineWidth = OUTLINE_WIDTH * 0.6;
+
+  if (world === 0) {
+    // Hanging print-shop sign.
+    ctx.fillStyle = '#F2E5C4';
+    const sx = PLAYFIELD_W - PANEL_MARGIN - 110;
+    const sy = 195;
+    ctx.fillRect(sx, sy, 78, 38);
+    ctx.strokeRect(sx, sy, 78, 38);
+    ctx.fillStyle = COLOR_INK;
+    ctx.font = `bold 18px ${FONT_STACK}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('INK', sx + 39, sy + 21);
+    // Scissors icon beside it.
+    ctx.strokeStyle = '#7A7A7A';
+    ctx.beginPath();
+    ctx.arc(sx + 100, sy + 12, 7, 0, Math.PI * 2);
+    ctx.arc(sx + 100, sy + 28, 7, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(sx + 96, sy + 8);
+    ctx.lineTo(sx + 118, sy + 32);
+    ctx.stroke();
+  } else if (world === 1) {
+    // Flowers along the ground base.
+    ctx.fillStyle = '#E9B949';
+    const flowers = [
+      { x: PANEL_MARGIN + 55, h: 22 },
+      { x: PANEL_MARGIN + 120, h: 30 },
+      { x: PLAYFIELD_W - PANEL_MARGIN - 85, h: 25 },
+    ];
+    for (const f of flowers) {
+      ctx.beginPath();
+      ctx.arc(f.x, GROUND_Y - 6, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(f.x, GROUND_Y - 6);
+      ctx.quadraticCurveTo(f.x - 4, GROUND_Y - f.h / 2, f.x, GROUND_Y - f.h);
+      ctx.stroke();
+    }
+    // Small bird silhouette.
+    ctx.strokeStyle = COLOR_INK;
+    ctx.beginPath();
+    ctx.moveTo(PANEL_MARGIN + 190, 120);
+    ctx.quadraticCurveTo(PANEL_MARGIN + 198, 110, PANEL_MARGIN + 206, 120);
+    ctx.stroke();
+  } else {
+    // Stars and neon "OPEN" sign.
+    ctx.fillStyle = '#FFF4D2';
+    const stars = [
+      { x: PANEL_MARGIN + 35, y: 75 },
+      { x: PANEL_MARGIN + 160, y: 55 },
+      { x: PLAYFIELD_W / 2, y: 65 },
+    ];
+    for (const s of stars) {
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y - 5);
+      ctx.lineTo(s.x + 1.5, s.y - 1.5);
+      ctx.lineTo(s.x + 5, s.y);
+      ctx.lineTo(s.x + 1.5, s.y + 1.5);
+      ctx.lineTo(s.x, s.y + 5);
+      ctx.lineTo(s.x - 1.5, s.y + 1.5);
+      ctx.lineTo(s.x - 5, s.y);
+      ctx.lineTo(s.x - 1.5, s.y - 1.5);
+      ctx.closePath();
+      ctx.fill();
+    }
+    if (stage === 3) {
+      ctx.fillStyle = '#F7B32B';
+      const nx = PLAYFIELD_W - PANEL_MARGIN - 120;
+      const ny = 185;
+      ctx.fillRect(nx, ny, 92, 34);
+      ctx.strokeRect(nx, ny, 92, 34);
+      ctx.fillStyle = COLOR_INK;
+      ctx.font = `bold 16px ${FONT_STACK}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('OPEN', nx + 46, ny + 19);
+    }
+  }
+  ctx.restore();
+}
+
 function drawCityscape(stage) {
   const left = PANEL_MARGIN;
   const right = PLAYFIELD_W - PANEL_MARGIN;
@@ -757,8 +952,12 @@ function drawPanel() {
   ctx.fillRect(0, 0, PLAYFIELD_W, PLAYFIELD_H);
 
   drawSky(stage);
+  drawHills(stage);
   drawClouds(stage);
+  drawCelestialBody(stage);
   drawCityscape(stage);
+  drawPowerLines(stage);
+  drawWorldExtras(stage);
   drawGroundPlatform(stage);
 
   // Minimal inking flash while a panel clear is being celebrated.
